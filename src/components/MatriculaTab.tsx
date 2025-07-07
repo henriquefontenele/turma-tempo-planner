@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Escola, Turma, Estudante, Matricula } from '@/types';
-import { UserPlus, FileText, Download } from 'lucide-react';
+import { UserPlus, FileText, Download, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 interface MatriculaTabProps {
@@ -51,6 +51,12 @@ export function MatriculaTab({
     (t.vagasOcupadas || 0) < t.vagas
   );
 
+  const gerarNumeroMatricula = () => {
+    const ano = new Date().getFullYear();
+    const proximoNumero = matriculas.length + 1;
+    return `${ano}${proximoNumero.toString().padStart(6, '0')}`;
+  };
+
   const gerarComprovantePDF = (matricula: Matricula, estudante: Estudante) => {
     const doc = new jsPDF();
     const escola = escolas.find(e => e.id === matricula.escolaId);
@@ -62,38 +68,39 @@ export function MatriculaTab({
     
     doc.setFontSize(12);
     doc.text(`Escola: ${escola?.nome || 'N/A'}`, 20, 50);
-    doc.text(`Data da Matrícula: ${new Date(matricula.dataMatricula).toLocaleDateString('pt-BR')}`, 20, 60);
+    doc.text(`Número da Matrícula: ${matricula.numeroMatricula}`, 20, 60);
+    doc.text(`Data da Matrícula: ${new Date(matricula.dataMatricula).toLocaleDateString('pt-BR')}`, 20, 70);
     
     // Dados do Estudante
     doc.setFontSize(14);
-    doc.text('DADOS DO ESTUDANTE', 20, 80);
+    doc.text('DADOS DO ESTUDANTE', 20, 90);
     doc.setFontSize(12);
-    doc.text(`Nome: ${estudante.nome}`, 20, 95);
-    doc.text(`CPF: ${estudante.cpf}`, 20, 105);
-    doc.text(`Data de Nascimento: ${new Date(estudante.dataNascimento).toLocaleDateString('pt-BR')}`, 20, 115);
-    doc.text(`E-mail: ${estudante.email}`, 20, 125);
-    doc.text(`Telefone: ${estudante.telefone}`, 20, 135);
-    doc.text(`Endereço: ${estudante.endereco}`, 20, 145);
+    doc.text(`Nome: ${estudante.nome}`, 20, 105);
+    doc.text(`CPF: ${estudante.cpf}`, 20, 115);
+    doc.text(`Data de Nascimento: ${new Date(estudante.dataNascimento).toLocaleDateString('pt-BR')}`, 20, 125);
+    doc.text(`E-mail: ${estudante.email}`, 20, 135);
+    doc.text(`Telefone: ${estudante.telefone}`, 20, 145);
+    doc.text(`Endereço: ${estudante.endereco}`, 20, 155);
     
     if (estudante.nomeResponsavel) {
-      doc.text(`Responsável: ${estudante.nomeResponsavel}`, 20, 155);
-      doc.text(`Telefone do Responsável: ${estudante.telefoneResponsavel}`, 20, 165);
+      doc.text(`Responsável: ${estudante.nomeResponsavel}`, 20, 165);
+      doc.text(`Telefone do Responsável: ${estudante.telefoneResponsavel}`, 20, 175);
     }
 
     // Dados da Turma
     doc.setFontSize(14);
-    doc.text('DADOS DA TURMA', 20, 185);
+    doc.text('DADOS DA TURMA', 20, 195);
     doc.setFontSize(12);
-    doc.text(`Turma: ${turma?.nome || 'N/A'}`, 20, 200);
-    doc.text(`Série: ${turma?.serie || 'N/A'}`, 20, 210);
-    doc.text(`Turno: ${turma?.turno || 'N/A'}`, 20, 220);
+    doc.text(`Turma: ${turma?.nome || 'N/A'}`, 20, 210);
+    doc.text(`Série: ${turma?.serie || 'N/A'}`, 20, 220);
+    doc.text(`Turno: ${turma?.turno || 'N/A'}`, 20, 230);
 
     if (matricula.observacoes) {
       doc.setFontSize(14);
-      doc.text('OBSERVAÇÕES', 20, 240);
+      doc.text('OBSERVAÇÕES', 20, 250);
       doc.setFontSize(12);
       const splitText = doc.splitTextToSize(matricula.observacoes, 170);
-      doc.text(splitText, 20, 255);
+      doc.text(splitText, 20, 265);
     }
 
     // Rodapé
@@ -101,7 +108,7 @@ export function MatriculaTab({
     doc.text('Este documento comprova a matrícula do estudante na instituição.', 20, 280);
     doc.text(`Documento gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 290);
 
-    doc.save(`comprovante-matricula-${estudante.nome.replace(/\s+/g, '-')}.pdf`);
+    doc.save(`comprovante-matricula-${matricula.numeroMatricula}.pdf`);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -115,6 +122,8 @@ export function MatriculaTab({
       });
       return;
     }
+
+    const numeroMatricula = gerarNumeroMatricula();
 
     // Criar estudante
     const novoEstudante: Estudante = {
@@ -132,6 +141,7 @@ export function MatriculaTab({
     // Criar matrícula
     const novaMatricula: Matricula = {
       id: (Date.now() + 1).toString(),
+      numeroMatricula,
       estudanteId: novoEstudante.id,
       escolaId: escolaSelecionada,
       turmaId: formData.turmaId,
@@ -166,8 +176,12 @@ export function MatriculaTab({
     
     toast({
       title: "Sucesso",
-      description: "Matrícula realizada com sucesso! Comprovante gerado em PDF.",
+      description: `Matrícula realizada com sucesso! Número: ${numeroMatricula}`,
     });
+  };
+
+  const abrirMatriculaPublica = () => {
+    window.open('/matricula', '_blank');
   };
 
   const escolasAtivas = escolas.filter(e => e.ativa);
@@ -176,9 +190,19 @@ export function MatriculaTab({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5" />
-            Matrícula de Estudante
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Matrícula de Estudante
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={abrirMatriculaPublica}
+              className="flex items-center gap-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Matrícula Pública
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -200,7 +224,6 @@ export function MatriculaTab({
               </Select>
             </div>
 
-            {/* Seleção de Turma */}
             {escolaSelecionada && (
               <div>
                 <Label>Turma Disponível *</Label>
@@ -223,7 +246,6 @@ export function MatriculaTab({
               </div>
             )}
 
-            {/* Dados do Estudante */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="nome">Nome Completo *</Label>
@@ -353,6 +375,7 @@ export function MatriculaTab({
                       </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div><strong>Matrícula:</strong> {matricula.numeroMatricula}</div>
                       <div><strong>Escola:</strong> {escola?.nome}</div>
                       <div><strong>Turma:</strong> {turma?.nome}</div>
                       <div><strong>CPF:</strong> {estudante?.cpf}</div>

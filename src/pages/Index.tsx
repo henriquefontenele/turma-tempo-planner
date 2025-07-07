@@ -5,8 +5,8 @@ import { DisciplinasTab } from '@/components/DisciplinasTab';
 import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { TurmasTab } from '@/components/TurmasTab';
 import { EscolasTab } from '@/components/EscolasTab';
-import { VagasTab } from '@/components/VagasTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
+import { AlunosTab } from '@/components/AlunosTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { HorariosTab } from '@/components/HorariosTab';
@@ -83,6 +83,7 @@ const Index = () => {
             <TurmasTab 
               turmas={turmas}
               disciplinas={disciplinas}
+              escolas={escolas}
               onTurmasChange={setTurmas} 
             />
           )}
@@ -91,14 +92,6 @@ const Index = () => {
             <EscolasTab 
               escolas={escolas}
               onEscolasChange={setEscolas} 
-            />
-          )}
-
-          {activeTab === 'vagas' && (
-            <VagasTab 
-              escolas={escolas}
-              turmas={turmas}
-              onTurmasChange={setTurmas} 
             />
           )}
 
@@ -111,6 +104,15 @@ const Index = () => {
               onEstudantesChange={setEstudantes}
               onMatriculasChange={setMatriculas}
               onTurmasChange={setTurmas}
+            />
+          )}
+
+          {activeTab === 'alunos' && (
+            <AlunosTab 
+              escolas={escolas}
+              turmas={turmas}
+              estudantes={estudantes}
+              matriculas={matriculas}
             />
           )}
           
@@ -145,7 +147,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 py-6 text-center text-gray-600">
           <p>Sistema de Horários Escolares e Matrículas - Gestão Completa</p>
           <p className="text-sm mt-1">
-            📚 Disciplinas • 👨‍🏫 Professores • 🎓 Turmas • 🏫 Escolas • 👥 Vagas • 📝 Matrícula • ⚙️ Config • 🎯 Gerador • 📅 Horários
+            📚 Disciplinas • 👨‍🏫 Professores • 🎓 Turmas • 🏫 Escolas • 📝 Matrícula • 👥 Alunos • ⚙️ Config • 🎯 Gerador • 📅 Horários
           </p>
         </div>
       </footer>

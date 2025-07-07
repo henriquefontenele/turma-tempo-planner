@@ -7,28 +7,31 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Disciplina, Turma } from '@/types';
+import { Disciplina, Turma, Escola } from '@/types';
 import { Plus, Trash } from 'lucide-react';
 
 interface TurmasTabProps {
   turmas: Turma[];
   disciplinas: Disciplina[];
+  escolas: Escola[];
   onTurmasChange: (turmas: Turma[]) => void;
 }
 
-export function TurmasTab({ turmas, disciplinas, onTurmasChange }: TurmasTabProps) {
+export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: TurmasTabProps) {
   const [formData, setFormData] = useState({
     nome: '',
     serie: '',
     turno: '' as 'matutino' | 'vespertino' | 'noturno' | '',
     disciplinas: [] as string[],
+    escolaId: '',
+    vagas: 30,
   });
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome.trim() || !formData.serie || !formData.turno) {
+    if (!formData.nome.trim() || !formData.serie || !formData.turno || !formData.escolaId) {
       toast({
         title: "Erro",
         description: "Todos os campos obrigatórios devem ser preenchidos",
@@ -46,16 +49,28 @@ export function TurmasTab({ turmas, disciplinas, onTurmasChange }: TurmasTabProp
       return;
     }
 
+    if (formData.vagas <= 0 || formData.vagas > 50) {
+      toast({
+        title: "Erro",
+        description: "O número de vagas deve ser entre 1 e 50",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const novaTurma: Turma = {
       id: Date.now().toString(),
       nome: formData.nome.trim(),
       serie: formData.serie,
       turno: formData.turno,
       disciplinas: formData.disciplinas,
+      escolaId: formData.escolaId,
+      vagas: formData.vagas,
+      vagasOcupadas: 0,
     };
 
     onTurmasChange([...turmas, novaTurma]);
-    setFormData({ nome: '', serie: '', turno: '', disciplinas: [] });
+    setFormData({ nome: '', serie: '', turno: '', disciplinas: [], escolaId: '', vagas: 30 });
     
     toast({
       title: "Sucesso",
@@ -79,6 +94,8 @@ export function TurmasTab({ turmas, disciplinas, onTurmasChange }: TurmasTabProp
     }
   };
 
+  const escolasAtivas = escolas.filter(e => e.ativa);
+
   return (
     <div className="space-y-6">
       <Card>
@@ -87,7 +104,7 @@ export function TurmasTab({ turmas, disciplinas, onTurmasChange }: TurmasTabProp
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="nome">Nome da Turma</Label>
                 <Input
@@ -131,6 +148,34 @@ export function TurmasTab({ turmas, disciplinas, onTurmasChange }: TurmasTabProp
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <Label htmlFor="vagas">Vagas</Label>
+                <Input
+                  id="vagas"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={formData.vagas}
+                  onChange={(e) => setFormData({ ...formData, vagas: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Escola</Label>
+              <Select value={formData.escolaId} onValueChange={(value) => setFormData({ ...formData, escolaId: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma escola" />
+                </SelectTrigger>
+                <SelectContent>
+                  {escolasAtivas.map((escola) => (
+                    <SelectItem key={escola.id} value={escola.id}>
+                      {escola.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -151,7 +196,6 @@ export function TurmasTab({ turmas, disciplinas, onTurmasChange }: TurmasTabProp
                   ))
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">Segure Ctrl para selecionar múltiplas disciplinas</p>
             </div>
 
             <Button type="submit" className="bg-purple-500 hover:bg-purple-600">
@@ -171,31 +215,40 @@ export function TurmasTab({ turmas, disciplinas, onTurmasChange }: TurmasTabProp
             <p className="text-gray-500 text-center py-8">Nenhuma turma cadastrada.</p>
           ) : (
             <div className="space-y-4">
-              {turmas.map((turma) => (
-                <div key={turma.id} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-lg">{turma.nome}</h4>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(turma.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                    <div>
-                      <strong>Série:</strong> {turma.serie} | <strong>Turno:</strong> {turma.turno}
+              {turmas.map((turma) => {
+                const escola = escolas.find(e => e.id === turma.escolaId);
+                return (
+                  <div key={turma.id} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-lg">{turma.nome}</h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(turma.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <div>
-                      <strong>Disciplinas:</strong> {turma.disciplinas.map(id => 
-                        disciplinas.find(d => d.id === id)?.nome
-                      ).join(', ')}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div>
+                        <strong>Série:</strong> {turma.serie} | <strong>Turno:</strong> {turma.turno}
+                      </div>
+                      <div>
+                        <strong>Escola:</strong> {escola?.nome || 'N/A'}
+                      </div>
+                      <div>
+                        <strong>Vagas:</strong> {(turma.vagasOcupadas || 0)} / {turma.vagas || 0}
+                      </div>
+                      <div>
+                        <strong>Disciplinas:</strong> {turma.disciplinas.map(id => 
+                          disciplinas.find(d => d.id === id)?.nome
+                        ).join(', ')}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

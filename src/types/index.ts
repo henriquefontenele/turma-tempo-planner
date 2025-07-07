@@ -83,6 +83,7 @@ export interface Estudante {
 
 export interface Matricula {
   id: string;
+  numeroMatricula: string;
   estudanteId: string;
   escolaId: string;
   turmaId: string;
