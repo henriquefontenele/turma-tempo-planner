@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Disciplina, Professor, Turma, Configuracoes, HorarioGerado, ErroGeracao } from '@/types';
 import { gerarHorarios } from '@/utils/horarioGenerator';
-import { Settings } from 'lucide-react';
+import { Settings, Trash2 } from 'lucide-react';
 
 interface GeradorTabProps {
   disciplinas: Disciplina[];
@@ -163,7 +162,7 @@ export function GeradorTab({
                 variant="outline"
                 className="border-red-300 text-red-600 hover:bg-red-50 px-8 py-3"
               >
-                <Trash className="w-5 h-5 mr-2" />
+                <Trash2 className="w-5 h-5 mr-2" />
                 Limpar Horários
               </Button>
             </div>
