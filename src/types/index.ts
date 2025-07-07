@@ -22,6 +22,9 @@ export interface Turma {
   serie: string;
   turno: 'matutino' | 'vespertino' | 'noturno';
   disciplinas: string[];
+  escolaId?: string;
+  vagas?: number;
+  vagasOcupadas?: number;
 }
 
 export interface ConfiguracaoTurno {
@@ -55,4 +58,35 @@ export interface ErroGeracao {
   tipo: 'conflito_professor' | 'carga_horaria_insuficiente' | 'sem_professor_disponivel' | 'configuracao_invalida';
   mensagem: string;
   detalhes?: any;
+}
+
+export interface Escola {
+  id: string;
+  nome: string;
+  endereco: string;
+  telefone: string;
+  email: string;
+  ativa: boolean;
+}
+
+export interface Estudante {
+  id: string;
+  nome: string;
+  cpf: string;
+  dataNascimento: string;
+  email: string;
+  telefone: string;
+  endereco: string;
+  nomeResponsavel?: string;
+  telefoneResponsavel?: string;
+}
+
+export interface Matricula {
+  id: string;
+  estudanteId: string;
+  escolaId: string;
+  turmaId: string;
+  dataMatricula: string;
+  status: 'ativa' | 'cancelada' | 'transferida';
+  observacoes?: string;
 }

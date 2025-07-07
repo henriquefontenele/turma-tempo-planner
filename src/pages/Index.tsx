@@ -4,11 +4,14 @@ import { Navigation } from '@/components/Navigation';
 import { DisciplinasTab } from '@/components/DisciplinasTab';
 import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { TurmasTab } from '@/components/TurmasTab';
+import { EscolasTab } from '@/components/EscolasTab';
+import { VagasTab } from '@/components/VagasTab';
+import { MatriculaTab } from '@/components/MatriculaTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { HorariosTab } from '@/components/HorariosTab';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Disciplina, Professor, Turma, Configuracoes, HorarioGerado } from '@/types';
+import { Disciplina, Professor, Turma, Escola, Estudante, Matricula, Configuracoes, HorarioGerado } from '@/types';
 
 const configuracoesPadrao: Configuracoes = {
   matutino: {
@@ -36,6 +39,9 @@ const Index = () => {
   const [disciplinas, setDisciplinas] = useLocalStorage<Disciplina[]>('disciplinas', []);
   const [professores, setProfessores] = useLocalStorage<Professor[]>('professores', []);
   const [turmas, setTurmas] = useLocalStorage<Turma[]>('turmas', []);
+  const [escolas, setEscolas] = useLocalStorage<Escola[]>('escolas', []);
+  const [estudantes, setEstudantes] = useLocalStorage<Estudante[]>('estudantes', []);
+  const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
   const [configuracoes, setConfiguracoes] = useLocalStorage<Configuracoes>('configuracoes', configuracoesPadrao);
   const [horarios, setHorarios] = useLocalStorage<HorarioGerado[]>('horarios', []);
 
@@ -46,9 +52,9 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
-              🎓 Sistema Avançado de Horários
+              🎓 Sistema Avançado de Horários e Matrículas
             </h1>
-            <p className="text-gray-600 mt-2">Geração automática de grades horárias escolares</p>
+            <p className="text-gray-600 mt-2">Geração automática de grades horárias e sistema de matrícula escolar</p>
           </div>
         </div>
       </header>
@@ -78,6 +84,33 @@ const Index = () => {
               turmas={turmas}
               disciplinas={disciplinas}
               onTurmasChange={setTurmas} 
+            />
+          )}
+
+          {activeTab === 'escolas' && (
+            <EscolasTab 
+              escolas={escolas}
+              onEscolasChange={setEscolas} 
+            />
+          )}
+
+          {activeTab === 'vagas' && (
+            <VagasTab 
+              escolas={escolas}
+              turmas={turmas}
+              onTurmasChange={setTurmas} 
+            />
+          )}
+
+          {activeTab === 'matricula' && (
+            <MatriculaTab 
+              escolas={escolas}
+              turmas={turmas}
+              estudantes={estudantes}
+              matriculas={matriculas}
+              onEstudantesChange={setEstudantes}
+              onMatriculasChange={setMatriculas}
+              onTurmasChange={setTurmas}
             />
           )}
           
@@ -110,9 +143,9 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-white border-t mt-16">
         <div className="max-w-7xl mx-auto px-4 py-6 text-center text-gray-600">
-          <p>Sistema de Horários Escolares - Geração Automática Inteligente</p>
+          <p>Sistema de Horários Escolares e Matrículas - Gestão Completa</p>
           <p className="text-sm mt-1">
-            📚 Disciplinas • 👨‍🏫 Professores • 🎓 Turmas • ⚙️ Configurações • 🎯 Gerador • 📅 Horários
+            📚 Disciplinas • 👨‍🏫 Professores • 🎓 Turmas • 🏫 Escolas • 👥 Vagas • 📝 Matrícula • ⚙️ Config • 🎯 Gerador • 📅 Horários
           </p>
         </div>
       </footer>
