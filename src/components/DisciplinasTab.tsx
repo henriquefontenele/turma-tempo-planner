@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Disciplina } from '@/types';
-import { Plus, Trash } from 'lucide-react';
+import { Plus, Trash, Edit } from 'lucide-react';
 
 interface DisciplinasTabProps {
   disciplinas: Disciplina[];
@@ -20,6 +21,8 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
     cargaHorariaSemanal: 4,
     permiteAulasGeminadas: false,
   });
+  const [editingDisciplina, setEditingDisciplina] = useState<Disciplina | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -47,6 +50,37 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
     toast({
       title: "Sucesso",
       description: "Disciplina cadastrada com sucesso!",
+    });
+  };
+
+  const handleEdit = (disciplina: Disciplina) => {
+    setEditingDisciplina(disciplina);
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingDisciplina || !editingDisciplina.nome.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome da disciplina é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const disciplinasAtualizadas = disciplinas.map(d => 
+      d.id === editingDisciplina.id ? editingDisciplina : d
+    );
+    
+    onDisciplinasChange(disciplinasAtualizadas);
+    setEditModalOpen(false);
+    setEditingDisciplina(null);
+    
+    toast({
+      title: "Sucesso",
+      description: "Disciplina atualizada com sucesso!",
     });
   };
 
@@ -126,14 +160,70 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
                       {disciplina.permiteAulasGeminadas ? ' Permite geminadas' : ' Não permite geminadas'}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(disciplina.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash className="w-4 h-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(disciplina)}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Editar Disciplina</DialogTitle>
+                        </DialogHeader>
+                        {editingDisciplina && (
+                          <form onSubmit={handleEditSubmit} className="space-y-4">
+                            <div>
+                              <Label htmlFor="edit-nome">Nome da Disciplina</Label>
+                              <Input
+                                id="edit-nome"
+                                value={editingDisciplina.nome}
+                                onChange={(e) => setEditingDisciplina({ ...editingDisciplina, nome: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="edit-carga">Carga Horária Semanal</Label>
+                              <Input
+                                id="edit-carga"
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={editingDisciplina.cargaHorariaSemanal}
+                                onChange={(e) => setEditingDisciplina({ ...editingDisciplina, cargaHorariaSemanal: parseInt(e.target.value) || 0 })}
+                              />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="edit-geminadas"
+                                checked={editingDisciplina.permiteAulasGeminadas}
+                                onCheckedChange={(checked) => setEditingDisciplina({ ...editingDisciplina, permiteAulasGeminadas: checked })}
+                              />
+                              <Label htmlFor="edit-geminadas">Permite Aulas Geminadas?</Label>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
+                                Cancelar
+                              </Button>
+                              <Button type="submit">Salvar</Button>
+                            </div>
+                          </form>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(disciplina.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

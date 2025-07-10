@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Escola } from '@/types';
-import { Plus, Trash2, Building } from 'lucide-react';
+import { Plus, Trash2, Building, Edit } from 'lucide-react';
 
 interface EscolasTabProps {
   escolas: Escola[];
@@ -22,6 +23,8 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
     email: '',
     ativa: true,
   });
+  const [editingEscola, setEditingEscola] = useState<Escola | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,6 +54,37 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
     toast({
       title: "Sucesso",
       description: "Escola cadastrada com sucesso!",
+    });
+  };
+
+  const handleEdit = (escola: Escola) => {
+    setEditingEscola(escola);
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingEscola || !editingEscola.nome.trim() || !editingEscola.endereco.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome e endereço são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const escolasAtualizadas = escolas.map(e => 
+      e.id === editingEscola.id ? editingEscola : e
+    );
+    
+    onEscolasChange(escolasAtualizadas);
+    setEditModalOpen(false);
+    setEditingEscola(null);
+    
+    toast({
+      title: "Sucesso",
+      description: "Escola atualizada com sucesso!",
     });
   };
 
@@ -161,6 +195,74 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
                         checked={escola.ativa}
                         onCheckedChange={() => toggleAtiva(escola.id)}
                       />
+                      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(escola)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Editar Escola</DialogTitle>
+                          </DialogHeader>
+                          {editingEscola && (
+                            <form onSubmit={handleEditSubmit} className="space-y-4">
+                              <div>
+                                <Label htmlFor="edit-nome">Nome da Escola</Label>
+                                <Input
+                                  id="edit-nome"
+                                  value={editingEscola.nome}
+                                  onChange={(e) => setEditingEscola({ ...editingEscola, nome: e.target.value })}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-endereco">Endereço</Label>
+                                <Input
+                                  id="edit-endereco"
+                                  value={editingEscola.endereco}
+                                  onChange={(e) => setEditingEscola({ ...editingEscola, endereco: e.target.value })}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-telefone">Telefone</Label>
+                                <Input
+                                  id="edit-telefone"
+                                  value={editingEscola.telefone}
+                                  onChange={(e) => setEditingEscola({ ...editingEscola, telefone: e.target.value })}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-email">E-mail</Label>
+                                <Input
+                                  id="edit-email"
+                                  type="email"
+                                  value={editingEscola.email}
+                                  onChange={(e) => setEditingEscola({ ...editingEscola, email: e.target.value })}
+                                />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  id="edit-ativa"
+                                  checked={editingEscola.ativa}
+                                  onCheckedChange={(checked) => setEditingEscola({ ...editingEscola, ativa: checked })}
+                                />
+                                <Label htmlFor="edit-ativa">Escola ativa</Label>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
+                                  Cancelar
+                                </Button>
+                                <Button type="submit">Salvar</Button>
+                              </div>
+                            </form>
+                          )}
+                        </DialogContent>
+                      </Dialog>
                       <Button
                         variant="outline"
                         size="sm"
