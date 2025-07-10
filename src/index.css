@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -101,5 +102,16 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Custom styles for sidebar menu buttons */
+@layer components {
+  [data-sidebar="menu-button"][data-active="true"] {
+    @apply bg-blue-500 text-white shadow-md;
+  }
+  
+  [data-sidebar="menu-button"]:not([data-active="true"]) {
+    @apply bg-gray-100 text-gray-600 hover:bg-gray-200;
   }
 }

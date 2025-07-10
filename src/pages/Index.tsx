@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Navigation } from '@/components/Navigation';
+import { AppSidebar } from '@/components/AppSidebar';
 import { DisciplinasTab } from '@/components/DisciplinasTab';
 import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { TurmasTab } from '@/components/TurmasTab';
@@ -11,9 +11,7 @@ import { ConfigTab } from '@/components/ConfigTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { HorariosTab } from '@/components/HorariosTab';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { LogOut, User } from 'lucide-react';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Disciplina, Professor, Turma, Escola, Estudante, Matricula, Configuracoes, HorarioGerado } from '@/types';
 
 const configuracoesPadrao: Configuracoes = {
@@ -47,141 +45,121 @@ const Index = () => {
   const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
   const [configuracoes, setConfiguracoes] = useLocalStorage<Configuracoes>('configuracoes', configuracoesPadrao);
   const [horarios, setHorarios] = useLocalStorage<HorarioGerado[]>('horarios', []);
-  
-  const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div className="text-center flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
-                🎓 Sistema Avançado de Horários e Matrículas
-              </h1>
-              <p className="text-gray-600 mt-2">Geração automática de grades horárias e sistema de matrícula escolar</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <User className="w-4 h-4" />
-                {user?.email}
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-gray-100">
+        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="bg-white shadow-sm border-b">
+            <div className="px-6 py-4">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <div className="text-center flex-1">
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Sistema Avançado de Horários e Matrículas
+                  </h1>
+                  <p className="text-gray-600 mt-1">Geração automática de grades horárias e sistema de matrícula escolar</p>
+                </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleLogout}
-                className="flex items-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                Sair
-              </Button>
             </div>
-          </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 p-6">
+            <div className="transition-all duration-300">
+              {activeTab === 'disciplinas' && (
+                <DisciplinasTab 
+                  disciplinas={disciplinas} 
+                  onDisciplinasChange={setDisciplinas} 
+                />
+              )}
+              
+              {activeTab === 'professores' && (
+                <ProfessoresTab 
+                  professores={professores}
+                  disciplinas={disciplinas}
+                  onProfessoresChange={setProfessores} 
+                />
+              )}
+              
+              {activeTab === 'turmas' && (
+                <TurmasTab 
+                  turmas={turmas}
+                  disciplinas={disciplinas}
+                  escolas={escolas}
+                  onTurmasChange={setTurmas} 
+                />
+              )}
+
+              {activeTab === 'escolas' && (
+                <EscolasTab 
+                  escolas={escolas}
+                  onEscolasChange={setEscolas} 
+                />
+              )}
+
+              {activeTab === 'matricula' && (
+                <MatriculaTab 
+                  escolas={escolas}
+                  turmas={turmas}
+                  estudantes={estudantes}
+                  matriculas={matriculas}
+                  onEstudantesChange={setEstudantes}
+                  onMatriculasChange={setMatriculas}
+                  onTurmasChange={setTurmas}
+                />
+              )}
+
+              {activeTab === 'alunos' && (
+                <AlunosTab 
+                  escolas={escolas}
+                  turmas={turmas}
+                  estudantes={estudantes}
+                  matriculas={matriculas}
+                />
+              )}
+              
+              {activeTab === 'config' && (
+                <ConfigTab 
+                  configuracoes={configuracoes}
+                  onConfiguracoesChange={setConfiguracoes} 
+                />
+              )}
+              
+              {activeTab === 'gerador' && (
+                <GeradorTab 
+                  disciplinas={disciplinas}
+                  professores={professores}
+                  turmas={turmas}
+                  configuracoes={configuracoes}
+                  onHorariosGerados={setHorarios}
+                />
+              )}
+              
+              {activeTab === 'horarios' && (
+                <HorariosTab 
+                  horarios={horarios}
+                  turmas={turmas}
+                />
+              )}
+            </div>
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-white border-t">
+            <div className="px-6 py-4 text-center text-gray-600">
+              <p>Sistema de Horários Escolares e Matrículas - Gestão Completa</p>
+              <p className="text-sm mt-1">
+                📚 Disciplinas • 👨‍🏫 Professores • 🎓 Turmas • 🏫 Escolas • 📝 Matrícula • 👥 Alunos • ⚙️ Config • 🎯 Gerador • 📅 Horários
+              </p>
+            </div>
+          </footer>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-
-        <div className="transition-all duration-300">
-          {activeTab === 'disciplinas' && (
-            <DisciplinasTab 
-              disciplinas={disciplinas} 
-              onDisciplinasChange={setDisciplinas} 
-            />
-          )}
-          
-          {activeTab === 'professores' && (
-            <ProfessoresTab 
-              professores={professores}
-              disciplinas={disciplinas}
-              onProfessoresChange={setProfessores} 
-            />
-          )}
-          
-          {activeTab === 'turmas' && (
-            <TurmasTab 
-              turmas={turmas}
-              disciplinas={disciplinas}
-              escolas={escolas}
-              onTurmasChange={setTurmas} 
-            />
-          )}
-
-          {activeTab === 'escolas' && (
-            <EscolasTab 
-              escolas={escolas}
-              onEscolasChange={setEscolas} 
-            />
-          )}
-
-          {activeTab === 'matricula' && (
-            <MatriculaTab 
-              escolas={escolas}
-              turmas={turmas}
-              estudantes={estudantes}
-              matriculas={matriculas}
-              onEstudantesChange={setEstudantes}
-              onMatriculasChange={setMatriculas}
-              onTurmasChange={setTurmas}
-            />
-          )}
-
-          {activeTab === 'alunos' && (
-            <AlunosTab 
-              escolas={escolas}
-              turmas={turmas}
-              estudantes={estudantes}
-              matriculas={matriculas}
-            />
-          )}
-          
-          {activeTab === 'config' && (
-            <ConfigTab 
-              configuracoes={configuracoes}
-              onConfiguracoesChange={setConfiguracoes} 
-            />
-          )}
-          
-          {activeTab === 'gerador' && (
-            <GeradorTab 
-              disciplinas={disciplinas}
-              professores={professores}
-              turmas={turmas}
-              configuracoes={configuracoes}
-              onHorariosGerados={setHorarios}
-            />
-          )}
-          
-          {activeTab === 'horarios' && (
-            <HorariosTab 
-              horarios={horarios}
-              turmas={turmas}
-            />
-          )}
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t mt-16">
-        <div className="max-w-7xl mx-auto px-4 py-6 text-center text-gray-600">
-          <p>Sistema de Horários Escolares e Matrículas - Gestão Completa</p>
-          <p className="text-sm mt-1">
-            📚 Disciplinas • 👨‍🏫 Professores • 🎓 Turmas • 🏫 Escolas • 📝 Matrícula • 👥 Alunos • ⚙️ Config • 🎯 Gerador • 📅 Horários
-          </p>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
