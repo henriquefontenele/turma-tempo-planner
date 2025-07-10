@@ -11,6 +11,9 @@ import { ConfigTab } from '@/components/ConfigTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { HorariosTab } from '@/components/HorariosTab';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { LogOut, User } from 'lucide-react';
 import { Disciplina, Professor, Turma, Escola, Estudante, Matricula, Configuracoes, HorarioGerado } from '@/types';
 
 const configuracoesPadrao: Configuracoes = {
@@ -44,17 +47,44 @@ const Index = () => {
   const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
   const [configuracoes, setConfiguracoes] = useLocalStorage<Configuracoes>('configuracoes', configuracoesPadrao);
   const [horarios, setHorarios] = useLocalStorage<HorarioGerado[]>('horarios', []);
+  
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
-              🎓 Sistema Avançado de Horários e Matrículas
-            </h1>
-            <p className="text-gray-600 mt-2">Geração automática de grades horárias e sistema de matrícula escolar</p>
+          <div className="flex justify-between items-center">
+            <div className="text-center flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
+                🎓 Sistema Avançado de Horários e Matrículas
+              </h1>
+              <p className="text-gray-600 mt-2">Geração automática de grades horárias e sistema de matrícula escolar</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <User className="w-4 h-4" />
+                {user?.email}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </header>
