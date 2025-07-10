@@ -19,9 +19,9 @@ interface AlunosTabProps {
 
 export function AlunosTab({ escolas, turmas, estudantes, matriculas }: AlunosTabProps) {
   const [filtros, setFiltros] = useState({
-    escola: '',
-    turma: '',
-    turno: '',
+    escola: 'all-schools',
+    turma: 'all-classes',
+    turno: 'all-shifts',
     busca: '',
   });
 
@@ -58,17 +58,17 @@ export function AlunosTab({ escolas, turmas, estudantes, matriculas }: AlunosTab
   };
 
   const turmasFiltradas = turmas.filter(t => 
-    (!filtros.escola || t.escolaId === filtros.escola) &&
-    (!filtros.turno || t.turno === filtros.turno)
+    (filtros.escola === 'all-schools' || t.escolaId === filtros.escola) &&
+    (filtros.turno === 'all-shifts' || t.turno === filtros.turno)
   );
 
   const matriculasFiltradas = matriculas.filter(matricula => {
     const estudante = estudantes.find(e => e.id === matricula.estudanteId);
     const turma = turmas.find(t => t.id === matricula.turmaId);
     
-    return (!filtros.escola || matricula.escolaId === filtros.escola) &&
-           (!filtros.turma || matricula.turmaId === filtros.turma) &&
-           (!filtros.turno || turma?.turno === filtros.turno) &&
+    return (filtros.escola === 'all-schools' || matricula.escolaId === filtros.escola) &&
+           (filtros.turma === 'all-classes' || matricula.turmaId === filtros.turma) &&
+           (filtros.turno === 'all-shifts' || turma?.turno === filtros.turno) &&
            (!filtros.busca || 
             estudante?.nome.toLowerCase().includes(filtros.busca.toLowerCase()) ||
             matricula.numeroMatricula.includes(filtros.busca)
@@ -89,12 +89,12 @@ export function AlunosTab({ escolas, turmas, estudantes, matriculas }: AlunosTab
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div>
               <Label>Escola</Label>
-              <Select value={filtros.escola} onValueChange={(value) => setFiltros({ ...filtros, escola: value, turma: '' })}>
+              <Select value={filtros.escola} onValueChange={(value) => setFiltros({ ...filtros, escola: value, turma: 'all-classes' })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as escolas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as escolas</SelectItem>
+                  <SelectItem value="all-schools">Todas as escolas</SelectItem>
                   {escolas.filter(e => e.ativa).map((escola) => (
                     <SelectItem key={escola.id} value={escola.id}>
                       {escola.nome}
@@ -111,7 +111,7 @@ export function AlunosTab({ escolas, turmas, estudantes, matriculas }: AlunosTab
                   <SelectValue placeholder="Todas as turmas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as turmas</SelectItem>
+                  <SelectItem value="all-classes">Todas as turmas</SelectItem>
                   {turmasFiltradas.map((turma) => (
                     <SelectItem key={turma.id} value={turma.id}>
                       {turma.nome}
@@ -128,7 +128,7 @@ export function AlunosTab({ escolas, turmas, estudantes, matriculas }: AlunosTab
                   <SelectValue placeholder="Todos os turnos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os turnos</SelectItem>
+                  <SelectItem value="all-shifts">Todos os turnos</SelectItem>
                   <SelectItem value="matutino">Matutino</SelectItem>
                   <SelectItem value="vespertino">Vespertino</SelectItem>
                   <SelectItem value="noturno">Noturno</SelectItem>
