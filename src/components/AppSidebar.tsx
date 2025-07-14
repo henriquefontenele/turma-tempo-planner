@@ -10,22 +10,38 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar';
 
-const tabs = [
-  { id: 'disciplinas', label: '📚 Disciplinas', emoji: '📚' },
-  { id: 'professores', label: '👨‍🏫 Professores', emoji: '👨‍🏫' },
-  { id: 'turmas', label: '🎓 Turmas', emoji: '🎓' },
-  { id: 'escolas', label: '🏫 Escolas', emoji: '🏫' },
-  { id: 'matricula', label: '📝 Matrícula', emoji: '📝' },
-  { id: 'alunos', label: '👥 Alunos', emoji: '👥' },
-  { id: 'config', label: '⚙️ Config', emoji: '⚙️' },
-  { id: 'gerador', label: '🎯 Gerador', emoji: '🎯' },
-  { id: 'horarios', label: '📅 Horários', emoji: '📅' },
+const menuGroups = [
+  {
+    label: 'CADASTRO',
+    items: [
+      { id: 'disciplinas', label: 'Disciplinas', emoji: '📚' },
+      { id: 'professores', label: 'Professores', emoji: '👨‍🏫' },
+      { id: 'turmas', label: 'Turmas', emoji: '🎓' },
+      { id: 'escolas', label: 'Escolas', emoji: '🏫' },
+    ]
+  },
+  {
+    label: 'MATRÍCULA',
+    items: [
+      { id: 'alunos', label: 'Alunos', emoji: '👥' },
+      { id: 'matricula', label: 'Matrícula', emoji: '📝' },
+    ]
+  },
+  {
+    label: 'HORÁRIO',
+    items: [
+      { id: 'gerador', label: 'Gerador', emoji: '🎯' },
+      { id: 'horarios', label: 'Horários', emoji: '📅' },
+      { id: 'config', label: 'Config', emoji: '⚙️' },
+    ]
+  }
 ];
 
 interface AppSidebarProps {
@@ -62,29 +78,34 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent className="bg-white">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {tabs.map((tab) => (
-                <SidebarMenuItem key={tab.id}>
-                  <SidebarMenuButton
-                    onClick={() => onTabChange(tab.id)}
-                    isActive={activeTab === tab.id}
-                    className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium transition-colors duration-200"
-                    data-active={activeTab === tab.id}
-                  >
-                    <span className="text-lg">{tab.emoji}</span>
-                    {!isCollapsed && (
-                      <span className="text-gray-700">
-                        {tab.label.split(' ')[1]}
-                      </span>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menuGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+              {!isCollapsed && group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      onClick={() => onTabChange(item.id)}
+                      isActive={activeTab === item.id}
+                      className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium transition-colors duration-200"
+                      data-active={activeTab === item.id}
+                    >
+                      <span className="text-lg">{item.emoji}</span>
+                      {!isCollapsed && (
+                        <span className="text-gray-700">
+                          {item.label}
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t bg-white p-4">
