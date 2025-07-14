@@ -1,13 +1,13 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Disciplina, Professor } from '@/types';
-import { Plus, Trash } from 'lucide-react';
+import { Plus, Trash, Edit } from 'lucide-react';
 
 interface ProfessoresTabProps {
   professores: Professor[];
@@ -24,6 +24,8 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
     horasNoturno: 0,
     diasIndisponiveis: [] as string[],
   });
+  const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
 
   const diasSemana = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
@@ -73,6 +75,80 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
       title: "Sucesso",
       description: "Professor cadastrado com sucesso!",
     });
+  };
+
+  const handleEdit = (professor: Professor) => {
+    setEditingProfessor(professor);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingProfessor) return;
+
+    if (!editingProfessor.nome.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome do professor é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editingProfessor.disciplinas.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione pelo menos uma disciplina",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const professoresAtualizados = professores.map(p => 
+      p.id === editingProfessor.id ? editingProfessor : p
+    );
+
+    onProfessoresChange(professoresAtualizados);
+    setIsEditModalOpen(false);
+    setEditingProfessor(null);
+    
+    toast({
+      title: "Sucesso",
+      description: "Professor atualizado com sucesso!",
+    });
+  };
+
+  const handleEditDisciplinaChange = (disciplinaId: string, checked: boolean) => {
+    if (!editingProfessor) return;
+    
+    if (checked) {
+      setEditingProfessor({
+        ...editingProfessor,
+        disciplinas: [...editingProfessor.disciplinas, disciplinaId]
+      });
+    } else {
+      setEditingProfessor({
+        ...editingProfessor,
+        disciplinas: editingProfessor.disciplinas.filter(id => id !== disciplinaId)
+      });
+    }
+  };
+
+  const handleEditDiaIndisponivelChange = (dia: string, checked: boolean) => {
+    if (!editingProfessor) return;
+    
+    if (checked) {
+      setEditingProfessor({
+        ...editingProfessor,
+        diasIndisponiveis: [...editingProfessor.diasIndisponiveis, dia]
+      });
+    } else {
+      setEditingProfessor({
+        ...editingProfessor,
+        diasIndisponiveis: editingProfessor.diasIndisponiveis.filter(d => d !== dia)
+      });
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -213,14 +289,24 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
                 <div key={professor.id} className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-lg">{professor.nome}</h4>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(professor.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(professor)}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(professor.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                     <div>
@@ -243,6 +329,127 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Professor</DialogTitle>
+          </DialogHeader>
+          
+          {editingProfessor && (
+            <form onSubmit={handleEditSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="edit-nome">Nome do Professor</Label>
+                  <Input
+                    id="edit-nome"
+                    placeholder="Digite o nome completo"
+                    value={editingProfessor.nome}
+                    onChange={(e) => setEditingProfessor({
+                      ...editingProfessor,
+                      nome: e.target.value
+                    })}
+                  />
+                </div>
+
+                <div>
+                  <Label>Disciplinas que Leciona</Label>
+                  <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                    {disciplinas.length === 0 ? (
+                      <p className="text-sm text-gray-500">Cadastre disciplinas primeiro</p>
+                    ) : (
+                      disciplinas.map((disciplina) => (
+                        <div key={disciplina.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-disc-${disciplina.id}`}
+                            checked={editingProfessor.disciplinas.includes(disciplina.id)}
+                            onCheckedChange={(checked) => handleEditDisciplinaChange(disciplina.id, !!checked)}
+                          />
+                          <Label htmlFor={`edit-disc-${disciplina.id}`} className="text-sm">{disciplina.nome}</Label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label>Horas/Semana por Turno</Label>
+                <div className="grid grid-cols-3 gap-4 mt-2">
+                  <div>
+                    <Label htmlFor="edit-matutino" className="text-sm">Matutino</Label>
+                    <Input
+                      id="edit-matutino"
+                      type="number"
+                      min="0"
+                      value={editingProfessor.horasMatutino}
+                      onChange={(e) => setEditingProfessor({
+                        ...editingProfessor,
+                        horasMatutino: parseInt(e.target.value) || 0
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-vespertino" className="text-sm">Vespertino</Label>
+                    <Input
+                      id="edit-vespertino"
+                      type="number"
+                      min="0"
+                      value={editingProfessor.horasVespertino}
+                      onChange={(e) => setEditingProfessor({
+                        ...editingProfessor,
+                        horasVespertino: parseInt(e.target.value) || 0
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-noturno" className="text-sm">Noturno</Label>
+                    <Input
+                      id="edit-noturno"
+                      type="number"
+                      min="0"
+                      value={editingProfessor.horasNoturno}
+                      onChange={(e) => setEditingProfessor({
+                        ...editingProfessor,
+                        horasNoturno: parseInt(e.target.value) || 0
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label>Dias Indisponíveis</Label>
+                <div className="mt-2 grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {diasSemana.map((dia) => (
+                    <div key={dia} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-dia-${dia}`}
+                        checked={editingProfessor.diasIndisponiveis.includes(dia)}
+                        onCheckedChange={(checked) => handleEditDiaIndisponivelChange(dia, !!checked)}
+                      />
+                      <Label htmlFor={`edit-dia-${dia}`} className="text-sm">{dia}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsEditModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
+                  Salvar Alterações
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
