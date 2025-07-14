@@ -119,6 +119,8 @@ const Index = () => {
                   turmas={turmas}
                   estudantes={estudantes}
                   matriculas={matriculas}
+                  onEstudantesChange={setEstudantes}
+                  onMatriculasChange={setMatriculas}
                 />
               )}
               
