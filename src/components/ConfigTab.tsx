@@ -1,7 +1,9 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Save } from 'lucide-react';
 import { Configuracoes } from '@/types';
 
 interface ConfigTabProps {
@@ -10,6 +12,8 @@ interface ConfigTabProps {
 }
 
 export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabProps) {
+  const { toast } = useToast();
+
   const updateTurno = (turno: keyof Configuracoes, field: string, value: string | number) => {
     onConfiguracoesChange({
       ...configuracoes,
@@ -17,6 +21,15 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
         ...configuracoes[turno],
         [field]: value,
       },
+    });
+  };
+
+  const handleSalvarConfiguracoes = () => {
+    // As configurações já são salvas automaticamente no localStorage através do useLocalStorage
+    // Este botão serve para dar feedback visual ao usuário de que as configurações foram salvas
+    toast({
+      title: "Configurações Salvas",
+      description: "As configurações de horários foram salvas com sucesso!",
     });
   };
 
@@ -32,8 +45,12 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Configurações do Sistema</CardTitle>
+          <Button onClick={handleSalvarConfiguracoes} className="flex items-center gap-2">
+            <Save className="w-4 h-4" />
+            Salvar Configurações
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
