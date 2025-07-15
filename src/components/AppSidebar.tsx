@@ -41,6 +41,12 @@ const menuGroups = [
       { id: 'horarios', label: 'Horários', emoji: '📅' },
       { id: 'config', label: 'Config', emoji: '⚙️' },
     ]
+  },
+  {
+    label: 'FREQUÊNCIA',
+    items: [
+      { id: 'frequencia', label: 'Frequência', emoji: '✅' },
+    ]
   }
 ];
 

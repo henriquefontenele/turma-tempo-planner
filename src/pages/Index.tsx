@@ -3,14 +3,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Navigation } from '@/components/Navigation';
+import { AppSidebar } from '@/components/AppSidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { EscolasTab } from '@/components/EscolasTab';
 import { TurmasTab } from '@/components/TurmasTab';
 import { DisciplinasTab } from '@/components/DisciplinasTab';
 import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { AlunosTab } from '@/components/AlunosTab';
 import { HorariosTab } from '@/components/HorariosTab';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { FrequenciaTab } from '@/components/FrequenciaTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia } from '@/types';
 
@@ -40,105 +40,97 @@ export default function Index() {
     }
   }, [user, navigate]);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'escolas':
+        return <EscolasTab escolas={escolas} onEscolasChange={setEscolas} />;
+      case 'turmas':
+        return (
+          <TurmasTab
+            escolas={escolas}
+            turmas={turmas}
+            disciplinas={disciplinas}
+            onTurmasChange={setTurmas}
+          />
+        );
+      case 'disciplinas':
+        return (
+          <DisciplinasTab
+            disciplinas={disciplinas}
+            onDisciplinasChange={setDisciplinas}
+          />
+        );
+      case 'professores':
+        return (
+          <ProfessoresTab
+            disciplinas={disciplinas}
+            professores={professores}
+            onProfessoresChange={setProfessores}
+          />
+        );
+      case 'alunos':
+        return (
+          <AlunosTab
+            escolas={escolas}
+            turmas={turmas}
+            estudantes={estudantes}
+            matriculas={matriculas}
+            onEstudantesChange={setEstudantes}
+            onMatriculasChange={setMatriculas}
+          />
+        );
+      case 'horarios':
+        return (
+          <HorariosTab
+            horarios={horariosGerados}
+            turmas={turmas}
+          />
+        );
+      case 'frequencia':
+        return (
+          <FrequenciaTab
+            escolas={escolas}
+            turmas={turmas}
+            estudantes={estudantes}
+            matriculas={matriculas}
+            disciplinas={disciplinas}
+            professores={professores}
+            registrosFrequencia={registrosFrequencia}
+            onRegistrosFrequenciaChange={setRegistrosFrequencia}
+          />
+        );
+      default:
+        return <EscolasTab escolas={escolas} onEscolasChange={setEscolas} />;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Sistema de Gestão Escolar</h1>
-          {user && (
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">Bem-vindo, {user.email}</span>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-              >
-                Sair
-              </button>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex flex-1 items-center justify-between">
+              <h1 className="text-lg font-semibold">Sistema de Gestão Escolar</h1>
+              {user && (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-600">Bem-vindo, {user.email}</span>
+                  <button
+                    onClick={logout}
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                  >
+                    Sair
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger value="escolas">Escolas</TabsTrigger>
-            <TabsTrigger value="turmas">Turmas</TabsTrigger>
-            <TabsTrigger value="disciplinas">Disciplinas</TabsTrigger>
-            <TabsTrigger value="professores">Professores</TabsTrigger>
-            <TabsTrigger value="alunos">Alunos</TabsTrigger>
-            <TabsTrigger value="horarios">Horários</TabsTrigger>
-            <TabsTrigger value="frequencia">Frequência</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="escolas">
-            <EscolasTab 
-              escolas={escolas} 
-              onEscolasChange={setEscolas} 
-            />
-          </TabsContent>
-
-          <TabsContent value="turmas">
-            <TurmasTab
-              escolas={escolas}
-              turmas={turmas}
-              disciplinas={disciplinas}
-              onTurmasChange={setTurmas}
-            />
-          </TabsContent>
-
-          <TabsContent value="disciplinas">
-            <DisciplinasTab
-              disciplinas={disciplinas}
-              onDisciplinasChange={setDisciplinas}
-            />
-          </TabsContent>
-
-          <TabsContent value="professores">
-            <ProfessoresTab
-              disciplinas={disciplinas}
-              professores={professores}
-              onProfessoresChange={setProfessores}
-            />
-          </TabsContent>
-
-          <TabsContent value="alunos">
-            <AlunosTab
-              escolas={escolas}
-              turmas={turmas}
-              estudantes={estudantes}
-              matriculas={matriculas}
-              onEstudantesChange={setEstudantes}
-              onMatriculasChange={setMatriculas}
-            />
-          </TabsContent>
-
-          <TabsContent value="horarios">
-            <HorariosTab
-              horarios={horariosGerados}
-              turmas={turmas}
-            />
-          </TabsContent>
-
-          <TabsContent value="frequencia">
-            <FrequenciaTab
-              escolas={escolas}
-              turmas={turmas}
-              estudantes={estudantes}
-              matriculas={matriculas}
-              disciplinas={disciplinas}
-              professores={professores}
-              registrosFrequencia={registrosFrequencia}
-              onRegistrosFrequenciaChange={setRegistrosFrequencia}
-            />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+          </header>
+          <main className="flex-1 p-6">
+            {renderContent()}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
