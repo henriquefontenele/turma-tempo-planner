@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +9,6 @@ import { TurmasTab } from '@/components/TurmasTab';
 import { DisciplinasTab } from '@/components/DisciplinasTab';
 import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { AlunosTab } from '@/components/AlunosTab';
-import { ConfiguracoesTab } from '@/components/ConfiguracoesTab';
 import { HorariosTab } from '@/components/HorariosTab';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { FrequenciaTab } from '@/components/FrequenciaTab';
@@ -17,6 +17,7 @@ import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuraco
 export default function Index() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('escolas');
 
   const [escolas, setEscolas] = useLocalStorage<Escola[]>('escolas', []);
   const [turmas, setTurmas] = useLocalStorage<Turma[]>('turmas', []);
@@ -39,19 +40,38 @@ export default function Index() {
     }
   }, [user, navigate]);
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation user={user} onLogout={logout} />
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
       
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="escolas" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Sistema de Gestão Escolar</h1>
+          {user && (
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Bem-vindo, {user.email}</span>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              >
+                Sair
+              </button>
+            </div>
+          )}
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="escolas">Escolas</TabsTrigger>
             <TabsTrigger value="turmas">Turmas</TabsTrigger>
             <TabsTrigger value="disciplinas">Disciplinas</TabsTrigger>
             <TabsTrigger value="professores">Professores</TabsTrigger>
             <TabsTrigger value="alunos">Alunos</TabsTrigger>
-            <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
             <TabsTrigger value="horarios">Horários</TabsTrigger>
             <TabsTrigger value="frequencia">Frequência</TabsTrigger>
           </TabsList>
@@ -98,22 +118,10 @@ export default function Index() {
             />
           </TabsContent>
 
-          <TabsContent value="configuracoes">
-            <ConfiguracoesTab
-              configuracoes={configuracoes}
-              onConfiguracoesChange={setConfiguracoes}
-            />
-          </TabsContent>
-
           <TabsContent value="horarios">
             <HorariosTab
-              escolas={escolas}
+              horarios={horariosGerados}
               turmas={turmas}
-              disciplinas={disciplinas}
-              professores={professores}
-              configuracoes={configuracoes}
-              horariosGerados={horariosGerados}
-              onHorariosGeradosChange={setHorariosGerados}
             />
           </TabsContent>
 

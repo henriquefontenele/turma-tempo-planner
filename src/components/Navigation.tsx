@@ -2,15 +2,13 @@
 import { cn } from "@/lib/utils";
 
 const tabs = [
+  { id: 'escolas', label: '🏫 Escolas', emoji: '🏫' },
+  { id: 'turmas', label: '🎓 Turmas', emoji: '🎓' },
   { id: 'disciplinas', label: '📚 Disciplinas', emoji: '📚' },
   { id: 'professores', label: '👨‍🏫 Professores', emoji: '👨‍🏫' },
-  { id: 'turmas', label: '🎓 Turmas', emoji: '🎓' },
-  { id: 'escolas', label: '🏫 Escolas', emoji: '🏫' },
-  { id: 'matricula', label: '📝 Matrícula', emoji: '📝' },
   { id: 'alunos', label: '👥 Alunos', emoji: '👥' },
-  { id: 'config', label: '⚙️ Config', emoji: '⚙️' },
-  { id: 'gerador', label: '🎯 Gerador', emoji: '🎯' },
   { id: 'horarios', label: '📅 Horários', emoji: '📅' },
+  { id: 'frequencia', label: '✅ Frequência', emoji: '✅' },
 ];
 
 interface NavigationProps {
