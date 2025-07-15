@@ -12,6 +12,7 @@ import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { AlunosTab } from '@/components/AlunosTab';
 import { HorariosTab } from '@/components/HorariosTab';
 import { FrequenciaTab } from '@/components/FrequenciaTab';
+import { GeradorTab } from '@/components/GeradorTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia } from '@/types';
 
 export default function Index() {
@@ -77,6 +78,16 @@ export default function Index() {
             matriculas={matriculas}
             onEstudantesChange={setEstudantes}
             onMatriculasChange={setMatriculas}
+          />
+        );
+      case 'gerador':
+        return (
+          <GeradorTab
+            disciplinas={disciplinas}
+            professores={professores}
+            turmas={turmas}
+            configuracoes={configuracoes}
+            onHorariosGerados={setHorariosGerados}
           />
         );
       case 'horarios':
