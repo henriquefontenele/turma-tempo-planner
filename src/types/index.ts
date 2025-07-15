@@ -91,3 +91,25 @@ export interface Matricula {
   status: 'ativa' | 'cancelada' | 'transferida';
   observacoes?: string;
 }
+
+export interface RegistroFrequencia {
+  id: string;
+  estudanteId: string;
+  turmaId: string;
+  disciplinaId: string;
+  professorId: string;
+  data: string;
+  status: 'presente' | 'falta' | 'falta_justificada';
+  observacoes?: string;
+  justificativa?: string;
+}
+
+export interface ResumoFrequencia {
+  estudanteId: string;
+  disciplinaId: string;
+  totalAulas: number;
+  presencas: number;
+  faltas: number;
+  faltasJustificadas: number;
+  percentualFrequencia: number;
+}
