@@ -29,6 +29,12 @@ const menuGroups = [
     ]
   },
   {
+    label: 'SISTEMA',
+    items: [
+      { id: 'usuarios', label: 'Usuários', emoji: '👤' },
+    ]
+  },
+  {
     label: 'MATRÍCULA',
     items: [
       { id: 'alunos', label: 'Alunos', emoji: '👥' },
@@ -56,9 +62,15 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout, hasAccess } = useAuth();
   const { state } = useSidebar();
   const isCollapsed = state === 'collapsed';
+
+  // Filtrar grupos e itens baseado nas permissões do usuário
+  const filteredMenuGroups = menuGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => hasAccess(item.id))
+  })).filter(group => group.items.length > 0);
 
   const handleLogout = async () => {
     try {
@@ -84,7 +96,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent className="bg-white">
-        {menuGroups.map((group) => (
+        {filteredMenuGroups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
               {!isCollapsed && group.label}
@@ -117,9 +129,16 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
       <SidebarFooter className="border-t bg-white p-4">
         <div className="flex flex-col gap-3">
           {!isCollapsed && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <User className="w-4 h-4" />
-              <span className="truncate">{user?.email}</span>
+            <div className="flex flex-col gap-1 text-xs text-gray-600">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                <span className="truncate">{userProfile?.nome || user?.email}</span>
+              </div>
+              {userProfile && (
+                <span className="text-xs text-gray-500 capitalize px-5">
+                  {userProfile.role}
+                </span>
+              )}
             </div>
           )}
           <Button 

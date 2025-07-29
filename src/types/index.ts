@@ -114,3 +114,14 @@ export interface ResumoFrequencia {
   faltasJustificadas: number;
   percentualFrequencia: number;
 }
+
+export type UserRole = 'administrador' | 'diretor' | 'coordenador' | 'secretario' | 'professor';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  nome: string;
+  role: UserRole;
+  escolaId?: string;
+  ativo: boolean;
+}

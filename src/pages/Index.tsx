@@ -15,6 +15,7 @@ import { FrequenciaTab } from '@/components/FrequenciaTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
+import { UsuariosTab } from '@/components/UsuariosTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia } from '@/types';
 
 export default function Index() {
@@ -131,6 +132,8 @@ export default function Index() {
             onRegistrosFrequenciaChange={setRegistrosFrequencia}
           />
         );
+      case 'usuarios':
+        return <UsuariosTab />;
       default:
         return <EscolasTab escolas={escolas} onEscolasChange={setEscolas} />;
     }
