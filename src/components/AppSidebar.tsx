@@ -25,7 +25,7 @@ const menuGroups = [
       { id: 'professores', label: 'Professores', emoji: '👨‍🏫' },
       { id: 'turmas', label: 'Turmas', emoji: '🎓' },
       { id: 'escolas', label: 'Escolas', emoji: '🏫' },
-      { id: 'config', label: 'Turno', emoji: '⚙️' },
+      { id: 'config', label: 'Turnos', emoji: '⚙️' },
     ]
   },
   {

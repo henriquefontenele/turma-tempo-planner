@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
     telefone: '',
     email: '',
     ativa: true,
+    turnos: [] as ('matutino' | 'vespertino' | 'noturno')[],
   });
   const [editingEscola, setEditingEscola] = useState<Escola | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -30,10 +32,10 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome.trim() || !formData.endereco.trim()) {
+    if (!formData.nome.trim() || !formData.endereco.trim() || formData.turnos.length === 0) {
       toast({
         title: "Erro",
-        description: "Nome e endereço são obrigatórios",
+        description: "Nome, endereço e pelo menos um turno são obrigatórios",
         variant: "destructive",
       });
       return;
@@ -46,10 +48,11 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
       telefone: formData.telefone.trim(),
       email: formData.email.trim(),
       ativa: formData.ativa,
+      turnos: formData.turnos,
     };
 
     onEscolasChange([...escolas, novaEscola]);
-    setFormData({ nome: '', endereco: '', telefone: '', email: '', ativa: true });
+    setFormData({ nome: '', endereco: '', telefone: '', email: '', ativa: true, turnos: [] });
     
     toast({
       title: "Sucesso",
@@ -65,10 +68,10 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!editingEscola || !editingEscola.nome.trim() || !editingEscola.endereco.trim()) {
+    if (!editingEscola || !editingEscola.nome.trim() || !editingEscola.endereco.trim() || editingEscola.turnos.length === 0) {
       toast({
         title: "Erro",
-        description: "Nome e endereço são obrigatórios",
+        description: "Nome, endereço e pelo menos um turno são obrigatórios",
         variant: "destructive",
       });
       return;
@@ -153,6 +156,28 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
+              </div>
+            </div>
+
+            <div>
+              <Label>Turnos de Funcionamento *</Label>
+              <div className="flex flex-wrap gap-4 mt-2">
+                {['matutino', 'vespertino', 'noturno'].map((turno) => (
+                  <div key={turno} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={turno}
+                      checked={formData.turnos.includes(turno as 'matutino' | 'vespertino' | 'noturno')}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setFormData({ ...formData, turnos: [...formData.turnos, turno as 'matutino' | 'vespertino' | 'noturno'] });
+                        } else {
+                          setFormData({ ...formData, turnos: formData.turnos.filter(t => t !== turno) });
+                        }
+                      }}
+                    />
+                    <Label htmlFor={turno} className="capitalize">{turno}</Label>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -245,6 +270,27 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
                                   onChange={(e) => setEditingEscola({ ...editingEscola, email: e.target.value })}
                                 />
                               </div>
+                              <div>
+                                <Label>Turnos de Funcionamento *</Label>
+                                <div className="flex flex-wrap gap-4 mt-2">
+                                  {['matutino', 'vespertino', 'noturno'].map((turno) => (
+                                    <div key={turno} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`edit-${turno}`}
+                                        checked={editingEscola.turnos.includes(turno as 'matutino' | 'vespertino' | 'noturno')}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setEditingEscola({ ...editingEscola, turnos: [...editingEscola.turnos, turno as 'matutino' | 'vespertino' | 'noturno'] });
+                                          } else {
+                                            setEditingEscola({ ...editingEscola, turnos: editingEscola.turnos.filter(t => t !== turno) });
+                                          }
+                                        }}
+                                      />
+                                      <Label htmlFor={`edit-${turno}`} className="capitalize">{turno}</Label>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                               <div className="flex items-center space-x-2">
                                 <Switch
                                   id="edit-ativa"
@@ -273,11 +319,12 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
                       </Button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                    <div><strong>Endereço:</strong> {escola.endereco}</div>
-                    <div><strong>Telefone:</strong> {escola.telefone || 'Não informado'}</div>
-                    <div><strong>E-mail:</strong> {escola.email || 'Não informado'}</div>
-                  </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                     <div><strong>Endereço:</strong> {escola.endereco}</div>
+                     <div><strong>Telefone:</strong> {escola.telefone || 'Não informado'}</div>
+                     <div><strong>E-mail:</strong> {escola.email || 'Não informado'}</div>
+                     <div><strong>Turnos:</strong> {escola.turnos?.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ') || 'Não informado'}</div>
+                   </div>
                 </div>
               ))}
             </div>

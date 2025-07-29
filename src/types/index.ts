@@ -67,6 +67,7 @@ export interface Escola {
   telefone: string;
   email: string;
   ativa: boolean;
+  turnos: ('matutino' | 'vespertino' | 'noturno')[];
 }
 
 export interface Estudante {
