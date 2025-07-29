@@ -14,6 +14,7 @@ import { HorariosTab } from '@/components/HorariosTab';
 import { FrequenciaTab } from '@/components/FrequenciaTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { ConfigTab } from '@/components/ConfigTab';
+import { MatriculaTab } from '@/components/MatriculaTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia } from '@/types';
 
 export default function Index() {
@@ -89,6 +90,18 @@ export default function Index() {
             turmas={turmas}
             configuracoes={configuracoes}
             onHorariosGerados={setHorariosGerados}
+          />
+        );
+      case 'matricula':
+        return (
+          <MatriculaTab
+            escolas={escolas}
+            turmas={turmas}
+            estudantes={estudantes}
+            matriculas={matriculas}
+            onEstudantesChange={setEstudantes}
+            onMatriculasChange={setMatriculas}
+            onTurmasChange={setTurmas}
           />
         );
       case 'config':
