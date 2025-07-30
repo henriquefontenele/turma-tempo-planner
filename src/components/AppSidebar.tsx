@@ -51,7 +51,7 @@ const menuGroups = [
   {
     label: 'FREQUÊNCIA',
     items: [
-      { id: 'frequencia', label: 'Frequência', emoji: '✅' },
+      { id: 'academico', label: 'Acadêmico', emoji: '🎓' },
     ]
   }
 ];

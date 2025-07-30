@@ -115,6 +115,29 @@ export interface ResumoFrequencia {
   percentualFrequencia: number;
 }
 
+export interface RegistroNota {
+  id: string;
+  estudanteId: string;
+  turmaId: string;
+  disciplinaId: string;
+  professorId: string;
+  tipo: 'prova' | 'trabalho' | 'projeto' | 'participacao' | 'recuperacao';
+  valor: number;
+  valorMaximo: number;
+  peso: number;
+  descricao: string;
+  dataAvaliacao: string;
+  observacoes?: string;
+}
+
+export interface ResumoNotas {
+  estudanteId: string;
+  disciplinaId: string;
+  notas: RegistroNota[];
+  mediaFinal: number;
+  situacao: 'aprovado' | 'reprovado' | 'em_andamento';
+}
+
 export type UserRole = 'administrador' | 'diretor' | 'coordenador' | 'secretario' | 'professor';
 
 export interface UserProfile {

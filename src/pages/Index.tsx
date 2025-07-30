@@ -11,12 +11,12 @@ import { DisciplinasTab } from '@/components/DisciplinasTab';
 import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { AlunosTab } from '@/components/AlunosTab';
 import { HorariosTab } from '@/components/HorariosTab';
-import { FrequenciaTab } from '@/components/FrequenciaTab';
+import { AcademicoTab } from '@/components/AcademicoTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
 import { UsuariosTab } from '@/components/UsuariosTab';
-import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia } from '@/types';
+import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 
 export default function Index() {
   const { user, logout } = useAuth();
@@ -37,6 +37,7 @@ export default function Index() {
   const [horariosGerados, setHorariosGerados] = useLocalStorage<HorarioGerado[]>('horarios-gerados', []);
   
   const [registrosFrequencia, setRegistrosFrequencia] = useLocalStorage<RegistroFrequencia[]>('registros-frequencia', []);
+  const [registrosNotas, setRegistrosNotas] = useLocalStorage<RegistroNota[]>('registros-notas', []);
 
   useEffect(() => {
     if (!user) {
@@ -119,9 +120,9 @@ export default function Index() {
             turmas={turmas}
           />
         );
-      case 'frequencia':
+      case 'academico':
         return (
-          <FrequenciaTab
+          <AcademicoTab
             escolas={escolas}
             turmas={turmas}
             estudantes={estudantes}
@@ -130,6 +131,8 @@ export default function Index() {
             professores={professores}
             registrosFrequencia={registrosFrequencia}
             onRegistrosFrequenciaChange={setRegistrosFrequencia}
+            registrosNotas={registrosNotas}
+            onRegistrosNotasChange={setRegistrosNotas}
           />
         );
       case 'usuarios':
