@@ -51,7 +51,7 @@ const menuGroups = [
   {
     label: 'ACADÊMICO',
     items: [
-      { id: 'academico', label: 'Acadêmico', emoji: '🎓' },
+      { id: 'academico', label: 'Frequência', emoji: '📋' },
     ]
   }
 ];
