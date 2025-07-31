@@ -62,12 +62,19 @@ export function UsuariosTab() {
     if (!editingUser) return;
 
     try {
-      await updateDoc(doc(db, 'users', editingUser.id), {
+      // Filtrar campos undefined para evitar erros do Firestore
+      const updateData: any = {
         nome: editingUser.nome,
         role: editingUser.role,
         ativo: editingUser.ativo,
-        escolaId: editingUser.escolaId
-      });
+      };
+
+      // Só incluir escolaId se não for undefined
+      if (editingUser.escolaId !== undefined) {
+        updateData.escolaId = editingUser.escolaId;
+      }
+
+      await updateDoc(doc(db, 'users', editingUser.id), updateData);
 
       setUsuarios(usuarios.map(u => 
         u.id === editingUser.id ? editingUser : u
