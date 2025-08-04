@@ -58,20 +58,6 @@ export function AcademicoTab({
   const [presencas, setPresencas] = useState<{[estudanteId: string]: 'presente' | 'falta' | 'falta_justificada'}>({});
   const [justificativas, setJustificativas] = useState<{[estudanteId: string]: string}>({});
 
-  // Estados para Notas
-  const [isNotaDialogOpen, setIsNotaDialogOpen] = useState(false);
-  const [formDataNota, setFormDataNota] = useState({
-    turmaId: '',
-    disciplinaId: '',
-    professorId: '',
-    tipo: 'prova' as const,
-    valorMaximo: '10',
-    peso: '1',
-    descricao: '',
-    dataAvaliacao: new Date().toISOString().split('T')[0],
-    observacoes: '',
-  });
-  const [notasEstudantes, setNotasEstudantes] = useState<{[estudanteId: string]: string}>({});
 
   const turmasFiltradas = turmas.filter(t => 
     filtros.escola === 'all-schools' || t.escolaId === filtros.escola
@@ -86,21 +72,8 @@ export function AcademicoTab({
       .filter(Boolean) as Estudante[]
     : [];
 
-  const estudantesDaTurmaNota = formDataNota.turmaId ? 
-    matriculasAtivas
-      .filter(m => m.turmaId === formDataNota.turmaId)
-      .map(m => estudantes.find(e => e.id === m.estudanteId))
-      .filter(Boolean) as Estudante[]
-    : [];
-
   const disciplinasDaTurma = formData.turmaId ?
     turmas.find(t => t.id === formData.turmaId)?.disciplinas.map(dId => 
-      disciplinas.find(d => d.id === dId)
-    ).filter(Boolean) as Disciplina[]
-    : [];
-
-  const disciplinasDaTurmaNota = formDataNota.turmaId ?
-    turmas.find(t => t.id === formDataNota.turmaId)?.disciplinas.map(dId => 
       disciplinas.find(d => d.id === dId)
     ).filter(Boolean) as Disciplina[]
     : [];
@@ -109,9 +82,6 @@ export function AcademicoTab({
     professores.filter(p => p.disciplinas.includes(formData.disciplinaId))
     : [];
 
-  const professoresDaDisciplinaNota = formDataNota.disciplinaId ?
-    professores.filter(p => p.disciplinas.includes(formDataNota.disciplinaId))
-    : [];
 
   const handleRegistrarFrequencia = () => {
     if (!formData.turmaId || !formData.disciplinaId || !formData.professorId || !onRegistrosFrequenciaChange) {
@@ -154,54 +124,6 @@ export function AcademicoTab({
     });
   };
 
-  const handleRegistrarNotas = () => {
-    if (!formDataNota.turmaId || !formDataNota.disciplinaId || !formDataNota.professorId || !onRegistrosNotasChange) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const novasNotas: RegistroNota[] = estudantesDaTurmaNota
-      .filter(estudante => notasEstudantes[estudante.id] !== undefined && notasEstudantes[estudante.id] !== '')
-      .map(estudante => ({
-        id: `${Date.now()}-${estudante.id}`,
-        estudanteId: estudante.id,
-        turmaId: formDataNota.turmaId,
-        disciplinaId: formDataNota.disciplinaId,
-        professorId: formDataNota.professorId,
-        tipo: formDataNota.tipo,
-        valor: parseFloat(notasEstudantes[estudante.id]),
-        valorMaximo: parseFloat(formDataNota.valorMaximo),
-        peso: parseFloat(formDataNota.peso),
-        descricao: formDataNota.descricao,
-        dataAvaliacao: formDataNota.dataAvaliacao,
-        observacoes: formDataNota.observacoes,
-      }));
-
-    onRegistrosNotasChange([...registrosNotas, ...novasNotas]);
-    
-    setIsNotaDialogOpen(false);
-    setFormDataNota({
-      turmaId: '',
-      disciplinaId: '',
-      professorId: '',
-      tipo: 'prova' as const,
-      valorMaximo: '10',
-      peso: '1',
-      descricao: '',
-      dataAvaliacao: new Date().toISOString().split('T')[0],
-      observacoes: '',
-    });
-    setNotasEstudantes({});
-
-    toast({
-      title: "Sucesso",
-      description: "Notas registradas com sucesso!",
-    });
-  };
 
   const calcularResumoFrequencia = (): ResumoFrequencia[] => {
     const resumos: {[key: string]: ResumoFrequencia} = {};
@@ -238,39 +160,6 @@ export function AcademicoTab({
     return Object.values(resumos);
   };
 
-  const calcularResumoNotas = (): ResumoNotas[] => {
-    const resumos: {[key: string]: ResumoNotas} = {};
-
-    registrosNotas.forEach(nota => {
-      const key = `${nota.estudanteId}-${nota.disciplinaId}`;
-      
-      if (!resumos[key]) {
-        resumos[key] = {
-          estudanteId: nota.estudanteId,
-          disciplinaId: nota.disciplinaId,
-          notas: [],
-          mediaFinal: 0,
-          situacao: 'em_andamento',
-        };
-      }
-
-      resumos[key].notas.push(nota);
-    });
-
-    // Calcular média final para cada resumo
-    Object.values(resumos).forEach(resumo => {
-      if (resumo.notas.length > 0) {
-        const somaNotasPonderadas = resumo.notas.reduce((sum, nota) => 
-          sum + (nota.valor * nota.peso), 0);
-        const somaPesos = resumo.notas.reduce((sum, nota) => sum + nota.peso, 0);
-        resumo.mediaFinal = somaPesos > 0 ? somaNotasPonderadas / somaPesos : 0;
-        resumo.situacao = resumo.mediaFinal >= 7 ? 'aprovado' : 
-                          resumo.mediaFinal >= 5 ? 'em_andamento' : 'reprovado';
-      }
-    });
-
-    return Object.values(resumos);
-  };
 
   const registrosFiltrados = registrosFrequencia.filter(registro => {
     const estudante = estudantes.find(e => e.id === registro.estudanteId);
@@ -298,32 +187,19 @@ export function AcademicoTab({
     }
   };
 
-  const getSituacaoBadge = (situacao: string) => {
-    switch (situacao) {
-      case 'aprovado':
-        return <Badge className="bg-green-100 text-green-800">Aprovado</Badge>;
-      case 'reprovado':
-        return <Badge className="bg-red-100 text-red-800">Reprovado</Badge>;
-      case 'em_andamento':
-        return <Badge className="bg-blue-100 text-blue-800">Em Andamento</Badge>;
-      default:
-        return <Badge variant="outline">{situacao}</Badge>;
-    }
-  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Módulo Acadêmico</h2>
+        <h1 className="text-2xl font-bold text-gray-900">📋 Controle de Frequência</h1>
         
-        <div className="flex gap-2">
-          <Dialog open={isRegistroDialogOpen} onOpenChange={setIsRegistroDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Registrar Frequência
-              </Button>
-            </DialogTrigger>
+        <Dialog open={isRegistroDialogOpen} onOpenChange={setIsRegistroDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Registrar Frequência
+            </Button>
+          </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Registrar Frequência da Aula</DialogTitle>
@@ -474,221 +350,10 @@ export function AcademicoTab({
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
-
-          <Dialog open={isNotaDialogOpen} onOpenChange={setIsNotaDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Registrar Notas
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Registrar Notas da Avaliação</DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="turma">Turma *</Label>
-                    <Select value={formDataNota.turmaId} onValueChange={(value) => {
-                      setFormDataNota({ ...formDataNota, turmaId: value, disciplinaId: '', professorId: '' });
-                      setNotasEstudantes({});
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a turma" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {turmas.map((turma) => (
-                          <SelectItem key={turma.id} value={turma.id}>
-                            {turma.nome} - {turma.turno}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="disciplina">Disciplina *</Label>
-                    <Select 
-                      value={formDataNota.disciplinaId} 
-                      onValueChange={(value) => setFormDataNota({ ...formDataNota, disciplinaId: value, professorId: '' })}
-                      disabled={!formDataNota.turmaId}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a disciplina" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {disciplinasDaTurmaNota.map((disciplina) => (
-                          <SelectItem key={disciplina.id} value={disciplina.id}>
-                            {disciplina.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="professor">Professor *</Label>
-                    <Select 
-                      value={formDataNota.professorId} 
-                      onValueChange={(value) => setFormDataNota({ ...formDataNota, professorId: value })}
-                      disabled={!formDataNota.disciplinaId}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o professor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {professoresDaDisciplinaNota.map((professor) => (
-                          <SelectItem key={professor.id} value={professor.id}>
-                            {professor.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="tipo">Tipo de Avaliação *</Label>
-                    <Select 
-                      value={formDataNota.tipo} 
-                      onValueChange={(value: any) => setFormDataNota({ ...formDataNota, tipo: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="prova">Prova</SelectItem>
-                        <SelectItem value="trabalho">Trabalho</SelectItem>
-                        <SelectItem value="projeto">Projeto</SelectItem>
-                        <SelectItem value="participacao">Participação</SelectItem>
-                        <SelectItem value="recuperacao">Recuperação</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="valorMaximo">Valor Máximo</Label>
-                    <Input
-                      id="valorMaximo"
-                      type="number"
-                      step="0.1"
-                      value={formDataNota.valorMaximo}
-                      onChange={(e) => setFormDataNota({ ...formDataNota, valorMaximo: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="peso">Peso</Label>
-                    <Input
-                      id="peso"
-                      type="number"
-                      step="0.1"
-                      value={formDataNota.peso}
-                      onChange={(e) => setFormDataNota({ ...formDataNota, peso: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="dataAvaliacao">Data da Avaliação *</Label>
-                    <Input
-                      id="dataAvaliacao"
-                      type="date"
-                      value={formDataNota.dataAvaliacao}
-                      onChange={(e) => setFormDataNota({ ...formDataNota, dataAvaliacao: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="descricao">Descrição *</Label>
-                    <Input
-                      id="descricao"
-                      value={formDataNota.descricao}
-                      onChange={(e) => setFormDataNota({ ...formDataNota, descricao: e.target.value })}
-                      placeholder="Ex: Prova Bimestral..."
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="observacoes">Observações</Label>
-                  <Textarea
-                    id="observacoes"
-                    value={formDataNota.observacoes}
-                    onChange={(e) => setFormDataNota({ ...formDataNota, observacoes: e.target.value })}
-                    placeholder="Observações sobre a avaliação..."
-                  />
-                </div>
-
-                {estudantesDaTurmaNota.length > 0 && (
-                  <div>
-                    <Label>Notas dos Alunos</Label>
-                    <div className="border rounded-lg mt-2">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Aluno</TableHead>
-                            <TableHead>Nota (0 a {formDataNota.valorMaximo})</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {estudantesDaTurmaNota.map((estudante) => (
-                            <TableRow key={estudante.id}>
-                              <TableCell>{estudante.nome}</TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  min="0"
-                                  max={formDataNota.valorMaximo}
-                                  placeholder="Digite a nota..."
-                                  value={notasEstudantes[estudante.id] || ''}
-                                  onChange={(e) => setNotasEstudantes({ 
-                                    ...notasEstudantes, 
-                                    [estudante.id]: e.target.value 
-                                  })}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNotaDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleRegistrarNotas}>
-                  Registrar Notas
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+        </Dialog>
       </div>
 
-      <Tabs defaultValue="frequencia" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="frequencia" className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" />
-            Frequência
-          </TabsTrigger>
-          <TabsTrigger value="notas" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Notas
-          </TabsTrigger>
-          <TabsTrigger value="relatorios" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Relatórios
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="frequencia">
+      <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -822,172 +487,7 @@ export function AcademicoTab({
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="notas">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Registros de Notas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {registrosNotas.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Nenhum registro de nota encontrado.</p>
-              ) : (
-                <div className="border rounded-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Aluno</TableHead>
-                        <TableHead>Disciplina</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Nota</TableHead>
-                        <TableHead>Peso</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {registrosNotas.map((nota) => {
-                        const estudante = estudantes.find(e => e.id === nota.estudanteId);
-                        const disciplina = disciplinas.find(d => d.id === nota.disciplinaId);
-                        
-                        return (
-                          <TableRow key={nota.id}>
-                            <TableCell>{new Date(nota.dataAvaliacao).toLocaleDateString('pt-BR')}</TableCell>
-                            <TableCell>{estudante?.nome}</TableCell>
-                            <TableCell>{disciplina?.nome}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {nota.tipo.charAt(0).toUpperCase() + nota.tipo.slice(1)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{nota.descricao}</TableCell>
-                            <TableCell>
-                              <span className="font-medium">
-                                {nota.valor.toFixed(1)}/{nota.valorMaximo.toFixed(1)}
-                              </span>
-                            </TableCell>
-                            <TableCell>{nota.peso.toFixed(1)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-
-              <div className="mt-4 text-sm text-gray-600">
-                Total de registros: {registrosNotas.length}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="relatorios">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5" />
-                  Relatório de Frequência
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {calcularResumoFrequencia().length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">Nenhum dado de frequência para gerar relatório.</p>
-                ) : (
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Aluno</TableHead>
-                          <TableHead>Disciplina</TableHead>
-                          <TableHead>% Freq.</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {calcularResumoFrequencia().map((resumo) => {
-                          const estudante = estudantes.find(e => e.id === resumo.estudanteId);
-                          const disciplina = disciplinas.find(d => d.id === resumo.disciplinaId);
-                          
-                          return (
-                            <TableRow key={`${resumo.estudanteId}-${resumo.disciplinaId}`}>
-                              <TableCell>{estudante?.nome}</TableCell>
-                              <TableCell>{disciplina?.nome}</TableCell>
-                              <TableCell>
-                                <span className={`font-medium ${
-                                  resumo.percentualFrequencia >= 75 ? 'text-green-600' :
-                                  resumo.percentualFrequencia >= 60 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>
-                                  {resumo.percentualFrequencia.toFixed(1)}%
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Relatório de Notas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {calcularResumoNotas().length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">Nenhum dado de notas para gerar relatório.</p>
-                ) : (
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Aluno</TableHead>
-                          <TableHead>Disciplina</TableHead>
-                          <TableHead>Média</TableHead>
-                          <TableHead>Situação</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {calcularResumoNotas().map((resumo) => {
-                          const estudante = estudantes.find(e => e.id === resumo.estudanteId);
-                          const disciplina = disciplinas.find(d => d.id === resumo.disciplinaId);
-                          
-                          return (
-                            <TableRow key={`${resumo.estudanteId}-${resumo.disciplinaId}`}>
-                              <TableCell>{estudante?.nome}</TableCell>
-                              <TableCell>{disciplina?.nome}</TableCell>
-                              <TableCell>
-                                <span className={`font-medium ${
-                                  resumo.mediaFinal >= 7 ? 'text-green-600' :
-                                  resumo.mediaFinal >= 5 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>
-                                  {resumo.mediaFinal.toFixed(1)}
-                                </span>
-                              </TableCell>
-                              <TableCell>{getSituacaoBadge(resumo.situacao)}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 }

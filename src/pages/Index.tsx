@@ -12,6 +12,8 @@ import { ProfessoresTab } from '@/components/ProfessoresTab';
 import { AlunosTab } from '@/components/AlunosTab';
 import { HorariosTab } from '@/components/HorariosTab';
 import { AcademicoTab } from '@/components/AcademicoTab';
+import { NotasTab } from '@/components/NotasTab';
+import { RelatorioTab } from '@/components/RelatorioTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
@@ -133,6 +135,32 @@ export default function Index() {
             onRegistrosFrequenciaChange={setRegistrosFrequencia}
             registrosNotas={registrosNotas}
             onRegistrosNotasChange={setRegistrosNotas}
+          />
+        );
+      case 'notas':
+        return (
+          <NotasTab
+            escolas={escolas}
+            turmas={turmas}
+            estudantes={estudantes}
+            matriculas={matriculas}
+            disciplinas={disciplinas}
+            professores={professores}
+            registrosNotas={registrosNotas}
+            onRegistrosNotasChange={setRegistrosNotas}
+          />
+        );
+      case 'relatorio':
+        return (
+          <RelatorioTab
+            escolas={escolas}
+            turmas={turmas}
+            estudantes={estudantes}
+            matriculas={matriculas}
+            disciplinas={disciplinas}
+            professores={professores}
+            registrosFrequencia={registrosFrequencia}
+            registrosNotas={registrosNotas}
           />
         );
       case 'usuarios':
