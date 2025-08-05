@@ -100,11 +100,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!userProfile) return false;
     
     const rolePermissions: Record<UserRole, string[]> = {
-      administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'usuarios'],
-      diretor: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios'],
-      coordenador: ['disciplinas', 'turmas', 'gerador', 'horarios', 'professores', 'matricula', 'alunos'],
-      secretario: ['professores', 'matricula', 'alunos'],
-      professor: ['academico']
+      administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio', 'usuarios'],
+      diretor: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio'],
+      coordenador: ['disciplinas', 'turmas', 'gerador', 'horarios', 'professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
+      secretario: ['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
+      professor: ['academico', 'notas', 'relatorio']
     };
     
     return rolePermissions[userProfile.role]?.includes(menuId) || false;
