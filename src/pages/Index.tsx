@@ -27,9 +27,9 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('escolas');
 
   const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas');
-  const [turmas, setTurmas] = useLocalStorage<Turma[]>('turmas', []);
+  const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas');
   const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina } = useFirestoreCollection<Disciplina>('disciplinas');
-  const [professores, setProfessores] = useLocalStorage<Professor[]>('professores', []);
+  const { data: professores, addItem: addProfessor, updateItem: updateProfessor, deleteItem: deleteProfessor } = useFirestoreCollection<Professor>('professores');
   const [estudantes, setEstudantes] = useLocalStorage<Estudante[]>('estudantes', []);
   const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
   const { data: configuracoes, updateData: setConfiguracoes } = useFirestoreDoc<Configuracoes>('configuracoes', {
@@ -90,6 +90,46 @@ export default function Index() {
     }
   };
 
+  const handleTurmasChange = async (novasTurmas: Turma[]) => {
+    const turmasAtuais = turmas;
+    const turmasAdicionadas = novasTurmas.filter(nova => !turmasAtuais.find(atual => atual.id === nova.id));
+    const turmasRemovidas = turmasAtuais.filter(atual => !novasTurmas.find(nova => nova.id === atual.id));
+    const turmasAtualizadas = novasTurmas.filter(nova => {
+      const atual = turmasAtuais.find(t => t.id === nova.id);
+      return atual && JSON.stringify(atual) !== JSON.stringify(nova);
+    });
+
+    for (const turma of turmasAdicionadas) {
+      await addTurma(turma);
+    }
+    for (const turma of turmasRemovidas) {
+      await deleteTurma(turma.id);
+    }
+    for (const turma of turmasAtualizadas) {
+      await updateTurma(turma.id, turma);
+    }
+  };
+
+  const handleProfessoresChange = async (novosProfessores: Professor[]) => {
+    const professoresAtuais = professores;
+    const professoresAdicionados = novosProfessores.filter(novo => !professoresAtuais.find(atual => atual.id === novo.id));
+    const professoresRemovidos = professoresAtuais.filter(atual => !novosProfessores.find(novo => novo.id === atual.id));
+    const professoresAtualizados = novosProfessores.filter(novo => {
+      const atual = professoresAtuais.find(p => p.id === novo.id);
+      return atual && JSON.stringify(atual) !== JSON.stringify(novo);
+    });
+
+    for (const professor of professoresAdicionados) {
+      await addProfessor(professor);
+    }
+    for (const professor of professoresRemovidos) {
+      await deleteProfessor(professor.id);
+    }
+    for (const professor of professoresAtualizados) {
+      await updateProfessor(professor.id, professor);
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'escolas':
@@ -100,7 +140,7 @@ export default function Index() {
             escolas={escolas}
             turmas={turmas}
             disciplinas={disciplinas}
-            onTurmasChange={setTurmas}
+            onTurmasChange={handleTurmasChange}
           />
         );
       case 'disciplinas':
@@ -115,7 +155,7 @@ export default function Index() {
           <ProfessoresTab
             disciplinas={disciplinas}
             professores={professores}
-            onProfessoresChange={setProfessores}
+            onProfessoresChange={handleProfessoresChange}
           />
         );
       case 'alunos':
@@ -148,7 +188,7 @@ export default function Index() {
             matriculas={matriculas}
             onEstudantesChange={setEstudantes}
             onMatriculasChange={setMatriculas}
-            onTurmasChange={setTurmas}
+            onTurmasChange={handleTurmasChange}
           />
         );
       case 'config':
