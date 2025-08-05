@@ -71,7 +71,12 @@ export function GeradorTab({
       }
       
       if (resultado.horarios.length > 0) {
-        onHorariosGerados(resultado.horarios);
+        // Adiciona timestamp para forçar re-renderização
+        const horariosComTimestamp = resultado.horarios.map(horario => ({
+          ...horario,
+          _timestamp: Date.now()
+        }));
+        onHorariosGerados(horariosComTimestamp);
         toast({
           title: "Sucesso",
           description: `${resultado.horarios.length} horário(s) gerado(s) com sucesso!`,
