@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useFirestoreDoc } from '@/hooks/useFirestore';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { EscolasTab } from '@/components/EscolasTab';
@@ -31,7 +32,7 @@ export default function Index() {
   const [professores, setProfessores] = useLocalStorage<Professor[]>('professores', []);
   const [estudantes, setEstudantes] = useLocalStorage<Estudante[]>('estudantes', []);
   const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
-  const [configuracoes, setConfiguracoes] = useLocalStorage<Configuracoes>('configuracoes', {
+  const { data: configuracoes, updateData: setConfiguracoes } = useFirestoreDoc<Configuracoes>('configuracoes', {
     matutino: { inicioAulas: '07:00', fimAulas: '12:00', intervalo: '09:30-09:50', aulasPorDia: 5 },
     vespertino: { inicioAulas: '13:00', fimAulas: '18:00', intervalo: '15:30-15:50', aulasPorDia: 5 },
     noturno: { inicioAulas: '19:00', fimAulas: '23:00', intervalo: '21:00-21:15', aulasPorDia: 4 },
