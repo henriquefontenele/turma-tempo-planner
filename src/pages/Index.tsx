@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useFirestoreDoc } from '@/hooks/useFirestore';
+import { useFirestoreDoc, useFirestoreCollection } from '@/hooks/useFirestore';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { EscolasTab } from '@/components/EscolasTab';
@@ -26,9 +26,9 @@ export default function Index() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('escolas');
 
-  const [escolas, setEscolas] = useLocalStorage<Escola[]>('escolas', []);
+  const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas');
   const [turmas, setTurmas] = useLocalStorage<Turma[]>('turmas', []);
-  const [disciplinas, setDisciplinas] = useLocalStorage<Disciplina[]>('disciplinas', []);
+  const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina } = useFirestoreCollection<Disciplina>('disciplinas');
   const [professores, setProfessores] = useLocalStorage<Professor[]>('professores', []);
   const [estudantes, setEstudantes] = useLocalStorage<Estudante[]>('estudantes', []);
   const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
@@ -48,10 +48,52 @@ export default function Index() {
     }
   }, [user, navigate]);
 
+  // Wrappers para manter compatibilidade com componentes existentes
+  const handleEscolasChange = async (novasEscolas: Escola[]) => {
+    // Identifica alterações e usa as funções corretas do Firestore
+    const escolasAtuais = escolas;
+    const escolasAdicionadas = novasEscolas.filter(nova => !escolasAtuais.find(atual => atual.id === nova.id));
+    const escolasRemovidas = escolasAtuais.filter(atual => !novasEscolas.find(nova => nova.id === atual.id));
+    const escolasAtualizadas = novasEscolas.filter(nova => {
+      const atual = escolasAtuais.find(e => e.id === nova.id);
+      return atual && JSON.stringify(atual) !== JSON.stringify(nova);
+    });
+
+    for (const escola of escolasAdicionadas) {
+      await addEscola(escola);
+    }
+    for (const escola of escolasRemovidas) {
+      await deleteEscola(escola.id);
+    }
+    for (const escola of escolasAtualizadas) {
+      await updateEscola(escola.id, escola);
+    }
+  };
+
+  const handleDisciplinasChange = async (novasDisciplinas: Disciplina[]) => {
+    const disciplinasAtuais = disciplinas;
+    const disciplinasAdicionadas = novasDisciplinas.filter(nova => !disciplinasAtuais.find(atual => atual.id === nova.id));
+    const disciplinasRemovidas = disciplinasAtuais.filter(atual => !novasDisciplinas.find(nova => nova.id === atual.id));
+    const disciplinasAtualizadas = novasDisciplinas.filter(nova => {
+      const atual = disciplinasAtuais.find(d => d.id === nova.id);
+      return atual && JSON.stringify(atual) !== JSON.stringify(nova);
+    });
+
+    for (const disciplina of disciplinasAdicionadas) {
+      await addDisciplina(disciplina);
+    }
+    for (const disciplina of disciplinasRemovidas) {
+      await deleteDisciplina(disciplina.id);
+    }
+    for (const disciplina of disciplinasAtualizadas) {
+      await updateDisciplina(disciplina.id, disciplina);
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'escolas':
-        return <EscolasTab escolas={escolas} onEscolasChange={setEscolas} />;
+        return <EscolasTab escolas={escolas} onEscolasChange={handleEscolasChange} />;
       case 'turmas':
         return (
           <TurmasTab
@@ -65,7 +107,7 @@ export default function Index() {
         return (
           <DisciplinasTab
             disciplinas={disciplinas}
-            onDisciplinasChange={setDisciplinas}
+            onDisciplinasChange={handleDisciplinasChange}
           />
         );
       case 'professores':
@@ -167,7 +209,7 @@ export default function Index() {
       case 'usuarios':
         return <UsuariosTab />;
       default:
-        return <EscolasTab escolas={escolas} onEscolasChange={setEscolas} />;
+        return <EscolasTab escolas={escolas} onEscolasChange={handleEscolasChange} />;
     }
   };
 
