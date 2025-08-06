@@ -21,6 +21,24 @@ import { UsuariosTab } from '@/components/UsuariosTab';
 import { Dashboard } from '@/components/Dashboard';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 
+// Mapeamento dos nomes das funcionalidades
+const tabNames: Record<string, string> = {
+  dashboard: 'Dashboard',
+  escolas: 'Escolas',
+  turmas: 'Turmas', 
+  disciplinas: 'Disciplinas',
+  professores: 'Professores',
+  alunos: 'Alunos',
+  gerador: 'Gerador de Horários',
+  matricula: 'Matrícula',
+  config: 'Turnos',
+  horarios: 'Horários',
+  academico: 'Frequência',
+  notas: 'Notas',
+  relatorio: 'Relatório',
+  usuarios: 'Usuários'
+};
+
 export default function Index() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -328,7 +346,7 @@ export default function Index() {
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
             <div className="flex flex-1 items-center justify-between">
-              <h1 className="text-lg font-semibold">Sistema de Gestão Escolar</h1>
+              <h1 className="text-lg font-semibold">{tabNames[activeTab] || 'Sistema de Gestão Escolar'}</h1>
               {user && (
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-600">Bem-vindo, {user.email}</span>

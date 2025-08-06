@@ -191,7 +191,7 @@ export function Dashboard({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <h2 className="text-2xl font-bold text-gray-900">Bem-vindo ao Sistema</h2>
           <p className="text-gray-600 mt-2">Visão geral do sistema de gestão escolar</p>
         </div>
         <Badge variant="outline" className="text-sm">
