@@ -152,6 +152,7 @@ function gerarHorarioTurma(
   }
   
   const horario: HorarioGerado = {
+    id: `horario_${turma.id}_${Date.now()}`,
     turmaId: turma.id,
     grade
   };

@@ -41,6 +41,7 @@ export interface Configuracoes {
 }
 
 export interface HorarioGerado {
+  id: string;
   turmaId: string;
   grade: {
     [dia: string]: {

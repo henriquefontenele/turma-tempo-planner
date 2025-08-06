@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useFirestoreDoc, useFirestoreCollection } from '@/hooks/useFirestore';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -37,10 +36,9 @@ export default function Index() {
     vespertino: { inicioAulas: '13:00', fimAulas: '18:00', intervalo: '15:30-15:50', aulasPorDia: 5 },
     noturno: { inicioAulas: '19:00', fimAulas: '23:00', intervalo: '21:00-21:15', aulasPorDia: 4 },
   });
-  const [horariosGerados, setHorariosGerados] = useLocalStorage<HorarioGerado[]>('horarios-gerados', []);
-  
-  const [registrosFrequencia, setRegistrosFrequencia] = useLocalStorage<RegistroFrequencia[]>('registros-frequencia', []);
-  const [registrosNotas, setRegistrosNotas] = useLocalStorage<RegistroNota[]>('registros-notas', []);
+  const { data: horariosGerados, addItem: addHorario, updateItem: updateHorario, deleteItem: deleteHorario, setData: setHorariosGerados } = useFirestoreCollection<HorarioGerado>('horarios-gerados');
+  const { data: registrosFrequencia, addItem: addRegistroFrequencia, updateItem: updateRegistroFrequencia, deleteItem: deleteRegistroFrequencia, setData: setRegistrosFrequencia } = useFirestoreCollection<RegistroFrequencia>('registros-frequencia');
+  const { data: registrosNotas, addItem: addRegistroNota, updateItem: updateRegistroNota, deleteItem: deleteRegistroNota, setData: setRegistrosNotas } = useFirestoreCollection<RegistroNota>('registros-notas');
 
   useEffect(() => {
     if (!user) {
