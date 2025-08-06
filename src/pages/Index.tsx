@@ -18,12 +18,13 @@ import { GeradorTab } from '@/components/GeradorTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
 import { UsuariosTab } from '@/components/UsuariosTab';
+import { Dashboard } from '@/components/Dashboard';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 
 export default function Index() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('escolas');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas');
   const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas');
@@ -170,6 +171,21 @@ export default function Index() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'dashboard':
+        return (
+          <Dashboard
+            escolas={escolas}
+            turmas={turmas}
+            disciplinas={disciplinas}
+            professores={professores}
+            estudantes={estudantes}
+            matriculas={matriculas}
+            horariosGerados={horariosGerados}
+            registrosFrequencia={registrosFrequencia}
+            registrosNotas={registrosNotas}
+            onNavigate={setActiveTab}
+          />
+        );
       case 'escolas':
         return <EscolasTab escolas={escolas} onEscolasChange={handleEscolasChange} />;
       case 'turmas':
@@ -287,7 +303,20 @@ export default function Index() {
       case 'usuarios':
         return <UsuariosTab />;
       default:
-        return <EscolasTab escolas={escolas} onEscolasChange={handleEscolasChange} />;
+        return (
+          <Dashboard
+            escolas={escolas}
+            turmas={turmas}
+            disciplinas={disciplinas}
+            professores={professores}
+            estudantes={estudantes}
+            matriculas={matriculas}
+            horariosGerados={horariosGerados}
+            registrosFrequencia={registrosFrequencia}
+            registrosNotas={registrosNotas}
+            onNavigate={setActiveTab}
+          />
+        );
     }
   };
 

@@ -87,12 +87,20 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
       <SidebarHeader className="border-b bg-white p-4">
         <div className="flex flex-col gap-2">
           {!isCollapsed && (
-            <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <button
+              onClick={() => onTabChange('dashboard')}
+              className="text-lg font-bold text-gray-900 flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer"
+            >
               🎓 Sistema de Horários
-            </h1>
+            </button>
           )}
           {isCollapsed && (
-            <div className="text-2xl">🎓</div>
+            <button
+              onClick={() => onTabChange('dashboard')}
+              className="text-2xl hover:text-blue-600 transition-colors cursor-pointer"
+            >
+              🎓
+            </button>
           )}
         </div>
       </SidebarHeader>
