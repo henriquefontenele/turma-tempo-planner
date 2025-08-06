@@ -91,7 +91,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
               onClick={() => onTabChange('dashboard')}
               className="text-lg font-bold text-gray-900 flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer"
             >
-              🎓 Sistema de Horários
+              🎓 Sistema de Gestão Escolar
             </button>
           )}
           {isCollapsed && (
