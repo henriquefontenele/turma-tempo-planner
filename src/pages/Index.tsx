@@ -30,8 +30,8 @@ export default function Index() {
   const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas');
   const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina } = useFirestoreCollection<Disciplina>('disciplinas');
   const { data: professores, addItem: addProfessor, updateItem: updateProfessor, deleteItem: deleteProfessor } = useFirestoreCollection<Professor>('professores');
-  const [estudantes, setEstudantes] = useLocalStorage<Estudante[]>('estudantes', []);
-  const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
+  const { data: estudantes, addItem: addEstudante, updateItem: updateEstudante, deleteItem: deleteEstudante } = useFirestoreCollection<Estudante>('estudantes');
+  const { data: matriculas, addItem: addMatricula, updateItem: updateMatricula, deleteItem: deleteMatricula } = useFirestoreCollection<Matricula>('matriculas');
   const { data: configuracoes, updateData: setConfiguracoes } = useFirestoreDoc<Configuracoes>('configuracoes', {
     matutino: { inicioAulas: '07:00', fimAulas: '12:00', intervalo: '09:30-09:50', aulasPorDia: 5 },
     vespertino: { inicioAulas: '13:00', fimAulas: '18:00', intervalo: '15:30-15:50', aulasPorDia: 5 },
@@ -130,6 +130,46 @@ export default function Index() {
     }
   };
 
+  const handleEstudantesChange = async (novosEstudantes: Estudante[]) => {
+    const estudantesAtuais = estudantes;
+    const estudantesAdicionados = novosEstudantes.filter(novo => !estudantesAtuais.find(atual => atual.id === novo.id));
+    const estudantesRemovidos = estudantesAtuais.filter(atual => !novosEstudantes.find(novo => novo.id === atual.id));
+    const estudantesAtualizados = novosEstudantes.filter(novo => {
+      const atual = estudantesAtuais.find(e => e.id === novo.id);
+      return atual && JSON.stringify(atual) !== JSON.stringify(novo);
+    });
+
+    for (const estudante of estudantesAdicionados) {
+      await addEstudante(estudante);
+    }
+    for (const estudante of estudantesRemovidos) {
+      await deleteEstudante(estudante.id);
+    }
+    for (const estudante of estudantesAtualizados) {
+      await updateEstudante(estudante.id, estudante);
+    }
+  };
+
+  const handleMatriculasChange = async (novasMatriculas: Matricula[]) => {
+    const matriculasAtuais = matriculas;
+    const matriculasAdicionadas = novasMatriculas.filter(nova => !matriculasAtuais.find(atual => atual.id === nova.id));
+    const matriculasRemovidas = matriculasAtuais.filter(atual => !novasMatriculas.find(nova => nova.id === atual.id));
+    const matriculasAtualizadas = novasMatriculas.filter(nova => {
+      const atual = matriculasAtuais.find(m => m.id === nova.id);
+      return atual && JSON.stringify(atual) !== JSON.stringify(nova);
+    });
+
+    for (const matricula of matriculasAdicionadas) {
+      await addMatricula(matricula);
+    }
+    for (const matricula of matriculasRemovidas) {
+      await deleteMatricula(matricula.id);
+    }
+    for (const matricula of matriculasAtualizadas) {
+      await updateMatricula(matricula.id, matricula);
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'escolas':
@@ -165,8 +205,8 @@ export default function Index() {
             turmas={turmas}
             estudantes={estudantes}
             matriculas={matriculas}
-            onEstudantesChange={setEstudantes}
-            onMatriculasChange={setMatriculas}
+            onEstudantesChange={handleEstudantesChange}
+            onMatriculasChange={handleMatriculasChange}
           />
         );
       case 'gerador':
@@ -186,8 +226,8 @@ export default function Index() {
             turmas={turmas}
             estudantes={estudantes}
             matriculas={matriculas}
-            onEstudantesChange={setEstudantes}
-            onMatriculasChange={setMatriculas}
+            onEstudantesChange={handleEstudantesChange}
+            onMatriculasChange={handleMatriculasChange}
             onTurmasChange={handleTurmasChange}
           />
         );
