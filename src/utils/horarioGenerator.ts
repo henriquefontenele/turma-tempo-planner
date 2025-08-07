@@ -85,9 +85,9 @@ function gerarHorarioTurma(
     
     const professoresDisponiveis = professores.filter(p => 
       p.disciplinas.includes(disciplinaId) && 
-      (turma.turno === 'matutino' ? p.horasMatutino > 0 :
-       turma.turno === 'vespertino' ? p.horasVespertino > 0 :
-       p.horasNoturno > 0)
+      (turma.turno === 'manhã' ? p.horasManha > 0 :
+       turma.turno === 'tarde' ? p.horasTarde > 0 :
+       p.horasNoite > 0)
     );
     
     if (professoresDisponiveis.length === 0) {
@@ -101,10 +101,10 @@ function gerarHorarioTurma(
     
     // Escolher professor com mais disponibilidade
     const professor = professoresDisponiveis.sort((a, b) => {
-      const horasA = turma.turno === 'matutino' ? a.horasMatutino :
-                     turma.turno === 'vespertino' ? a.horasVespertino : a.horasNoturno;
-      const horasB = turma.turno === 'matutino' ? b.horasMatutino :
-                     turma.turno === 'vespertino' ? b.horasVespertino : b.horasNoturno;
+      const horasA = turma.turno === 'manhã' ? a.horasManha :
+                     turma.turno === 'tarde' ? a.horasTarde : a.horasNoite;
+      const horasB = turma.turno === 'manhã' ? b.horasManha :
+                     turma.turno === 'tarde' ? b.horasTarde : b.horasNoite;
       return horasB - horasA;
     })[0];
     

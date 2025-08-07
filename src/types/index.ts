@@ -10,9 +10,9 @@ export interface Professor {
   id: string;
   nome: string;
   disciplinas: string[];
-  horasMatutino: number;
-  horasVespertino: number;
-  horasNoturno: number;
+  horasManha: number;
+  horasTarde: number;
+  horasNoite: number;
   diasIndisponiveis: string[];
 }
 
@@ -20,7 +20,7 @@ export interface Turma {
   id: string;
   nome: string;
   serie: string;
-  turno: 'matutino' | 'vespertino' | 'noturno';
+  turno: 'manhã' | 'tarde' | 'noite';
   disciplinas: string[];
   escolaId?: string;
   vagas?: number;
@@ -35,9 +35,9 @@ export interface ConfiguracaoTurno {
 }
 
 export interface Configuracoes {
-  matutino: ConfiguracaoTurno;
-  vespertino: ConfiguracaoTurno;
-  noturno: ConfiguracaoTurno;
+  manhã: ConfiguracaoTurno;
+  tarde: ConfiguracaoTurno;
+  noite: ConfiguracaoTurno;
 }
 
 export interface HorarioGerado {
@@ -68,7 +68,7 @@ export interface Escola {
   telefone: string;
   email: string;
   ativa: boolean;
-  turnos: ('matutino' | 'vespertino' | 'noturno')[];
+  turnos: ('manhã' | 'tarde' | 'noite')[];
 }
 
 export interface Estudante {

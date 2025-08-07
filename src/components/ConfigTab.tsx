@@ -56,15 +56,15 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Turno Matutino */}
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-blue-800 mb-4">Turno Matutino</h3>
+              <h3 className="font-semibold text-blue-800 mb-4">Turno Manhã</h3>
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="mat-inicio" className="text-sm">Início das aulas</Label>
                   <Input
                     id="mat-inicio"
                     type="time"
-                    value={configuracoes.matutino.inicioAulas}
-                    onChange={(e) => updateTurno('matutino', 'inicioAulas', e.target.value)}
+                    value={configuracoes.manhã.inicioAulas}
+                    onChange={(e) => updateTurno('manhã', 'inicioAulas', e.target.value)}
                   />
                 </div>
                 <div>
@@ -72,8 +72,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                   <Input
                     id="mat-fim"
                     type="time"
-                    value={configuracoes.matutino.fimAulas}
-                    onChange={(e) => updateTurno('matutino', 'fimAulas', e.target.value)}
+                    value={configuracoes.manhã.fimAulas}
+                    onChange={(e) => updateTurno('manhã', 'fimAulas', e.target.value)}
                   />
                 </div>
                 <div>
@@ -81,8 +81,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                   <Input
                     id="mat-intervalo"
                     placeholder="09:30-09:50"
-                    value={configuracoes.matutino.intervalo}
-                    onChange={(e) => updateTurno('matutino', 'intervalo', e.target.value)}
+                    value={configuracoes.manhã.intervalo}
+                    onChange={(e) => updateTurno('manhã', 'intervalo', e.target.value)}
                   />
                 </div>
                 <div>
@@ -92,8 +92,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                     type="number"
                     min="1"
                     max="10"
-                    value={configuracoes.matutino.aulasPorDia}
-                    onChange={(e) => updateTurno('matutino', 'aulasPorDia', parseInt(e.target.value) || 5)}
+                    value={configuracoes.manhã.aulasPorDia}
+                    onChange={(e) => updateTurno('manhã', 'aulasPorDia', parseInt(e.target.value) || 5)}
                   />
                 </div>
               </div>
@@ -101,15 +101,15 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
 
             {/* Turno Vespertino */}
             <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <h3 className="font-semibold text-green-800 mb-4">Turno Vespertino</h3>
+              <h3 className="font-semibold text-green-800 mb-4">Turno Tarde</h3>
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="vesp-inicio" className="text-sm">Início das aulas</Label>
                   <Input
                     id="vesp-inicio"
                     type="time"
-                    value={configuracoes.vespertino.inicioAulas}
-                    onChange={(e) => updateTurno('vespertino', 'inicioAulas', e.target.value)}
+                    value={configuracoes.tarde.inicioAulas}
+                    onChange={(e) => updateTurno('tarde', 'inicioAulas', e.target.value)}
                   />
                 </div>
                 <div>
@@ -117,8 +117,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                   <Input
                     id="vesp-fim"
                     type="time"
-                    value={configuracoes.vespertino.fimAulas}
-                    onChange={(e) => updateTurno('vespertino', 'fimAulas', e.target.value)}
+                    value={configuracoes.tarde.fimAulas}
+                    onChange={(e) => updateTurno('tarde', 'fimAulas', e.target.value)}
                   />
                 </div>
                 <div>
@@ -126,8 +126,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                   <Input
                     id="vesp-intervalo"
                     placeholder="15:30-15:50"
-                    value={configuracoes.vespertino.intervalo}
-                    onChange={(e) => updateTurno('vespertino', 'intervalo', e.target.value)}
+                    value={configuracoes.tarde.intervalo}
+                    onChange={(e) => updateTurno('tarde', 'intervalo', e.target.value)}
                   />
                 </div>
                 <div>
@@ -137,8 +137,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                     type="number"
                     min="1"
                     max="10"
-                    value={configuracoes.vespertino.aulasPorDia}
-                    onChange={(e) => updateTurno('vespertino', 'aulasPorDia', parseInt(e.target.value) || 5)}
+                    value={configuracoes.tarde.aulasPorDia}
+                    onChange={(e) => updateTurno('tarde', 'aulasPorDia', parseInt(e.target.value) || 5)}
                   />
                 </div>
               </div>
@@ -146,15 +146,15 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
 
             {/* Turno Noturno */}
             <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <h3 className="font-semibold text-purple-800 mb-4">Turno Noturno</h3>
+              <h3 className="font-semibold text-purple-800 mb-4">Turno Noite</h3>
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="not-inicio" className="text-sm">Início das aulas</Label>
                   <Input
                     id="not-inicio"
                     type="time"
-                    value={configuracoes.noturno.inicioAulas}
-                    onChange={(e) => updateTurno('noturno', 'inicioAulas', e.target.value)}
+                    value={configuracoes.noite.inicioAulas}
+                    onChange={(e) => updateTurno('noite', 'inicioAulas', e.target.value)}
                   />
                 </div>
                 <div>
@@ -162,8 +162,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                   <Input
                     id="not-fim"
                     type="time"
-                    value={configuracoes.noturno.fimAulas}
-                    onChange={(e) => updateTurno('noturno', 'fimAulas', e.target.value)}
+                    value={configuracoes.noite.fimAulas}
+                    onChange={(e) => updateTurno('noite', 'fimAulas', e.target.value)}
                   />
                 </div>
                 <div>
@@ -171,8 +171,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                   <Input
                     id="not-intervalo"
                     placeholder="20:30-20:40"
-                    value={configuracoes.noturno.intervalo}
-                    onChange={(e) => updateTurno('noturno', 'intervalo', e.target.value)}
+                    value={configuracoes.noite.intervalo}
+                    onChange={(e) => updateTurno('noite', 'intervalo', e.target.value)}
                   />
                 </div>
                 <div>
@@ -182,8 +182,8 @@ export function ConfigTab({ configuracoes, onConfiguracoesChange }: ConfigTabPro
                     type="number"
                     min="1"
                     max="8"
-                    value={configuracoes.noturno.aulasPorDia}
-                    onChange={(e) => updateTurno('noturno', 'aulasPorDia', parseInt(e.target.value) || 4)}
+                    value={configuracoes.noite.aulasPorDia}
+                    onChange={(e) => updateTurno('noite', 'aulasPorDia', parseInt(e.target.value) || 4)}
                   />
                 </div>
               </div>

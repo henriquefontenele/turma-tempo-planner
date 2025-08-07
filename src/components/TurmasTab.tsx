@@ -22,7 +22,7 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
   const [formData, setFormData] = useState({
     nome: '',
     serie: '',
-    turno: '' as 'matutino' | 'vespertino' | 'noturno' | '',
+    turno: '' as 'manhã' | 'tarde' | 'noite' | '',
     disciplinas: [] as string[],
     escolaId: '',
     vagas: 30,
@@ -213,9 +213,9 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="matutino">Matutino</SelectItem>
-                    <SelectItem value="vespertino">Vespertino</SelectItem>
-                    <SelectItem value="noturno">Noturno</SelectItem>
+                  <SelectItem value="manhã">Manhã</SelectItem>
+                  <SelectItem value="tarde">Tarde</SelectItem>
+                  <SelectItem value="noite">Noite</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -380,9 +380,9 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="matutino">Matutino</SelectItem>
-                      <SelectItem value="vespertino">Vespertino</SelectItem>
-                      <SelectItem value="noturno">Noturno</SelectItem>
+                      <SelectItem value="manhã">Manhã</SelectItem>
+                      <SelectItem value="tarde">Tarde</SelectItem>
+                      <SelectItem value="noite">Noite</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

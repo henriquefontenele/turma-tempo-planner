@@ -19,9 +19,9 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
   const [formData, setFormData] = useState({
     nome: '',
     disciplinas: [] as string[],
-    horasMatutino: 0,
-    horasVespertino: 0,
-    horasNoturno: 0,
+    horasManha: 0,
+    horasTarde: 0,
+    horasNoite: 0,
     diasIndisponiveis: [] as string[],
   });
   const [editingProfessor, setEditingProfessor] = useState<Professor | null>(null);
@@ -55,9 +55,9 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
       id: Date.now().toString(),
       nome: formData.nome.trim(),
       disciplinas: formData.disciplinas,
-      horasMatutino: formData.horasMatutino,
-      horasVespertino: formData.horasVespertino,
-      horasNoturno: formData.horasNoturno,
+      horasManha: formData.horasManha,
+      horasTarde: formData.horasTarde,
+      horasNoite: formData.horasNoite,
       diasIndisponiveis: formData.diasIndisponiveis,
     };
 
@@ -65,9 +65,9 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
     setFormData({
       nome: '',
       disciplinas: [],
-      horasMatutino: 0,
-      horasVespertino: 0,
-      horasNoturno: 0,
+      horasManha: 0,
+      horasTarde: 0,
+      horasNoite: 0,
       diasIndisponiveis: [],
     });
     
@@ -220,33 +220,33 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
               <Label>Horas/Semana por Turno</Label>
               <div className="grid grid-cols-3 gap-4 mt-2">
                 <div>
-                  <Label htmlFor="matutino" className="text-sm">Matutino</Label>
+                  <Label htmlFor="manha" className="text-sm">Manhã</Label>
                   <Input
-                    id="matutino"
+                    id="manha"
                     type="number"
                     min="0"
-                    value={formData.horasMatutino}
-                    onChange={(e) => setFormData({ ...formData, horasMatutino: parseInt(e.target.value) || 0 })}
+                    value={formData.horasManha}
+                    onChange={(e) => setFormData({ ...formData, horasManha: parseInt(e.target.value) || 0 })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="vespertino" className="text-sm">Vespertino</Label>
+                  <Label htmlFor="tarde" className="text-sm">Tarde</Label>
                   <Input
-                    id="vespertino"
+                    id="tarde"
                     type="number"
                     min="0"
-                    value={formData.horasVespertino}
-                    onChange={(e) => setFormData({ ...formData, horasVespertino: parseInt(e.target.value) || 0 })}
+                    value={formData.horasTarde}
+                    onChange={(e) => setFormData({ ...formData, horasTarde: parseInt(e.target.value) || 0 })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="noturno" className="text-sm">Noturno</Label>
+                  <Label htmlFor="noite" className="text-sm">Noite</Label>
                   <Input
-                    id="noturno"
+                    id="noite"
                     type="number"
                     min="0"
-                    value={formData.horasNoturno}
-                    onChange={(e) => setFormData({ ...formData, horasNoturno: parseInt(e.target.value) || 0 })}
+                    value={formData.horasNoite}
+                    onChange={(e) => setFormData({ ...formData, horasNoite: parseInt(e.target.value) || 0 })}
                   />
                 </div>
               </div>
@@ -315,7 +315,7 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
                       ).join(', ')}
                     </div>
                     <div>
-                      <strong>Horas:</strong> Mat: {professor.horasMatutino}h, Vesp: {professor.horasVespertino}h, Not: {professor.horasNoturno}h
+                      <strong>Horas:</strong> Manhã: {professor.horasManha}h, Tarde: {professor.horasTarde}h, Noite: {professor.horasNoite}h
                     </div>
                     {professor.diasIndisponiveis.length > 0 && (
                       <div className="md:col-span-2">
@@ -377,41 +377,41 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
                 <Label>Horas/Semana por Turno</Label>
                 <div className="grid grid-cols-3 gap-4 mt-2">
                   <div>
-                    <Label htmlFor="edit-matutino" className="text-sm">Matutino</Label>
+                    <Label htmlFor="edit-manha" className="text-sm">Manhã</Label>
                     <Input
-                      id="edit-matutino"
+                      id="edit-manha"
                       type="number"
                       min="0"
-                      value={editingProfessor.horasMatutino}
+                      value={editingProfessor.horasManha}
                       onChange={(e) => setEditingProfessor({
                         ...editingProfessor,
-                        horasMatutino: parseInt(e.target.value) || 0
+                        horasManha: parseInt(e.target.value) || 0
                       })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-vespertino" className="text-sm">Vespertino</Label>
+                    <Label htmlFor="edit-tarde" className="text-sm">Tarde</Label>
                     <Input
-                      id="edit-vespertino"
+                      id="edit-tarde"
                       type="number"
                       min="0"
-                      value={editingProfessor.horasVespertino}
+                      value={editingProfessor.horasTarde}
                       onChange={(e) => setEditingProfessor({
                         ...editingProfessor,
-                        horasVespertino: parseInt(e.target.value) || 0
+                        horasTarde: parseInt(e.target.value) || 0
                       })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-noturno" className="text-sm">Noturno</Label>
+                    <Label htmlFor="edit-noite" className="text-sm">Noite</Label>
                     <Input
-                      id="edit-noturno"
+                      id="edit-noite"
                       type="number"
                       min="0"
-                      value={editingProfessor.horasNoturno}
+                      value={editingProfessor.horasNoite}
                       onChange={(e) => setEditingProfessor({
                         ...editingProfessor,
-                        horasNoturno: parseInt(e.target.value) || 0
+                        horasNoite: parseInt(e.target.value) || 0
                       })}
                     />
                   </div>

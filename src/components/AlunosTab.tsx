@@ -162,7 +162,7 @@ export function AlunosTab({
                   <SelectValue placeholder="Todas as escolas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all-schools">Todas las escolas</SelectItem>
+                  <SelectItem value="all-schools">Todas as escolas</SelectItem>
                   {escolas.filter(e => e.ativa).map((escola) => (
                     <SelectItem key={escola.id} value={escola.id}>
                       {escola.nome}
@@ -197,9 +197,9 @@ export function AlunosTab({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all-shifts">Todos os turnos</SelectItem>
-                  <SelectItem value="matutino">Matutino</SelectItem>
-                  <SelectItem value="vespertino">Vespertino</SelectItem>
-                  <SelectItem value="noturno">Noturno</SelectItem>
+                  <SelectItem value="manhã">Manhã</SelectItem>
+                  <SelectItem value="tarde">Tarde</SelectItem>
+                  <SelectItem value="noite">Noite</SelectItem>
                 </SelectContent>
               </Select>
             </div>

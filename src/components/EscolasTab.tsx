@@ -8,28 +8,25 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { Escola } from '@/types';
 import { Plus, Trash2, Building, Edit } from 'lucide-react';
 
-interface EscolasTabProps {
-  escolas: Escola[];
-  onEscolasChange: (escolas: Escola[]) => void;
-}
-
-export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
+export function EscolasTab() {
+  const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas');
   const [formData, setFormData] = useState({
     nome: '',
     endereco: '',
     telefone: '',
     email: '',
     ativa: true,
-    turnos: [] as ('matutino' | 'vespertino' | 'noturno')[],
+    turnos: [] as ('manhã' | 'tarde' | 'noite')[],
   });
   const [editingEscola, setEditingEscola] = useState<Escola | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nome.trim() || !formData.endereco.trim() || formData.turnos.length === 0) {
@@ -41,8 +38,7 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
       return;
     }
 
-    const novaEscola: Escola = {
-      id: Date.now().toString(),
+    const novaEscola: Omit<Escola, 'id'> = {
       nome: formData.nome.trim(),
       endereco: formData.endereco.trim(),
       telefone: formData.telefone.trim(),
@@ -51,7 +47,7 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
       turnos: formData.turnos,
     };
 
-    onEscolasChange([...escolas, novaEscola]);
+    await addEscola(novaEscola);
     setFormData({ nome: '', endereco: '', telefone: '', email: '', ativa: true, turnos: [] });
     
     toast({
@@ -65,7 +61,7 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
     setEditModalOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!editingEscola || !editingEscola.nome.trim() || !editingEscola.endereco.trim() || editingEscola.turnos.length === 0) {
@@ -77,11 +73,7 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
       return;
     }
 
-    const escolasAtualizadas = escolas.map(e => 
-      e.id === editingEscola.id ? editingEscola : e
-    );
-    
-    onEscolasChange(escolasAtualizadas);
+    await updateEscola(editingEscola.id, editingEscola);
     setEditModalOpen(false);
     setEditingEscola(null);
     
@@ -91,18 +83,19 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
     });
   };
 
-  const handleDelete = (id: string) => {
-    onEscolasChange(escolas.filter(e => e.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteEscola(id);
     toast({
       title: "Sucesso",
       description: "Escola removida com sucesso!",
     });
   };
 
-  const toggleAtiva = (id: string) => {
-    onEscolasChange(escolas.map(e => 
-      e.id === id ? { ...e, ativa: !e.ativa } : e
-    ));
+  const toggleAtiva = async (id: string) => {
+    const escola = escolas.find(e => e.id === id);
+    if (escola) {
+      await updateEscola(id, { ...escola, ativa: !escola.ativa });
+    }
   };
 
   return (
@@ -162,14 +155,14 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
             <div>
               <Label>Turnos de Funcionamento *</Label>
               <div className="flex flex-wrap gap-4 mt-2">
-                {['matutino', 'vespertino', 'noturno'].map((turno) => (
+                {['manhã', 'tarde', 'noite'].map((turno) => (
                   <div key={turno} className="flex items-center space-x-2">
                     <Checkbox
                       id={turno}
-                      checked={formData.turnos.includes(turno as 'matutino' | 'vespertino' | 'noturno')}
+                      checked={formData.turnos.includes(turno as 'manhã' | 'tarde' | 'noite')}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setFormData({ ...formData, turnos: [...formData.turnos, turno as 'matutino' | 'vespertino' | 'noturno'] });
+                          setFormData({ ...formData, turnos: [...formData.turnos, turno as 'manhã' | 'tarde' | 'noite'] });
                         } else {
                           setFormData({ ...formData, turnos: formData.turnos.filter(t => t !== turno) });
                         }
@@ -273,14 +266,14 @@ export function EscolasTab({ escolas, onEscolasChange }: EscolasTabProps) {
                               <div>
                                 <Label>Turnos de Funcionamento *</Label>
                                 <div className="flex flex-wrap gap-4 mt-2">
-                                  {['matutino', 'vespertino', 'noturno'].map((turno) => (
+                                  {['manhã', 'tarde', 'noite'].map((turno) => (
                                     <div key={turno} className="flex items-center space-x-2">
                                       <Checkbox
                                         id={`edit-${turno}`}
-                                        checked={editingEscola.turnos.includes(turno as 'matutino' | 'vespertino' | 'noturno')}
+                                        checked={editingEscola.turnos.includes(turno as 'manhã' | 'tarde' | 'noite')}
                                         onCheckedChange={(checked) => {
                                           if (checked) {
-                                            setEditingEscola({ ...editingEscola, turnos: [...editingEscola.turnos, turno as 'matutino' | 'vespertino' | 'noturno'] });
+                                            setEditingEscola({ ...editingEscola, turnos: [...editingEscola.turnos, turno as 'manhã' | 'tarde' | 'noite'] });
                                           } else {
                                             setEditingEscola({ ...editingEscola, turnos: editingEscola.turnos.filter(t => t !== turno) });
                                           }
