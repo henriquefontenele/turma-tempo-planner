@@ -207,14 +207,7 @@ export default function Index() {
       case 'escolas':
         return <EscolasTab />;
       case 'turmas':
-        return (
-          <TurmasTab
-            escolas={escolas}
-            turmas={turmas}
-            disciplinas={disciplinas}
-            onTurmasChange={handleTurmasChange}
-          />
-        );
+        return <TurmasTab />;
       case 'disciplinas':
         return <DisciplinasTab />;
       case 'professores':

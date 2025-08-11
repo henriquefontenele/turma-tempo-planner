@@ -8,17 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { Disciplina, Turma, Escola } from '@/types';
 import { Plus, Trash, Edit } from 'lucide-react';
 
-interface TurmasTabProps {
-  turmas: Turma[];
-  disciplinas: Disciplina[];
-  escolas: Escola[];
-  onTurmasChange: (turmas: Turma[]) => void;
-}
-
-export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: TurmasTabProps) {
+export function TurmasTab() {
+  const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas');
+  const { data: disciplinas } = useFirestoreCollection<Disciplina>('disciplinas');
+  const { data: escolas } = useFirestoreCollection<Escola>('escolas');
   const [formData, setFormData] = useState({
     nome: '',
     serie: '',
@@ -32,7 +29,7 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nome.trim() || !formData.serie || !formData.turno || !formData.escolaId) {
@@ -62,8 +59,7 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
       return;
     }
 
-    const novaTurma: Turma = {
-      id: Date.now().toString(),
+    const novaTurma = {
       nome: formData.nome.trim(),
       serie: formData.serie,
       turno: formData.turno,
@@ -73,7 +69,7 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
       vagasOcupadas: 0,
     };
 
-    onTurmasChange([...turmas, novaTurma]);
+    await addTurma(novaTurma);
     setFormData({ nome: '', serie: '', turno: '', disciplinas: [], escolaId: '', vagas: 30 });
     
     toast({
@@ -87,7 +83,7 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!editingTurma) return;
@@ -119,11 +115,16 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
       return;
     }
 
-    const turmasAtualizadas = turmas.map(t => 
-      t.id === editingTurma.id ? editingTurma : t
-    );
+    await updateTurma(editingTurma.id, {
+      nome: editingTurma.nome.trim(),
+      serie: editingTurma.serie,
+      turno: editingTurma.turno,
+      disciplinas: editingTurma.disciplinas,
+      escolaId: editingTurma.escolaId,
+      vagas: editingTurma.vagas,
+      vagasOcupadas: editingTurma.vagasOcupadas,
+    });
     
-    onTurmasChange(turmasAtualizadas);
     setIsEditDialogOpen(false);
     setEditingTurma(null);
     
@@ -133,8 +134,8 @@ export function TurmasTab({ turmas, disciplinas, escolas, onTurmasChange }: Turm
     });
   };
 
-  const handleDelete = (id: string) => {
-    onTurmasChange(turmas.filter(t => t.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteTurma(id);
     toast({
       title: "Sucesso",
       description: "Turma removida com sucesso!",
