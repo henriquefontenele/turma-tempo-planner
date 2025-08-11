@@ -216,12 +216,7 @@ export default function Index() {
           />
         );
       case 'disciplinas':
-        return (
-          <DisciplinasTab
-            disciplinas={disciplinas}
-            onDisciplinasChange={handleDisciplinasChange}
-          />
-        );
+        return <DisciplinasTab />;
       case 'professores':
         return (
           <ProfessoresTab

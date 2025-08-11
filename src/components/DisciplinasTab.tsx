@@ -7,15 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { Disciplina } from '@/types';
 import { Plus, Trash, Edit } from 'lucide-react';
 
-interface DisciplinasTabProps {
-  disciplinas: Disciplina[];
-  onDisciplinasChange: (disciplinas: Disciplina[]) => void;
-}
-
-export function DisciplinasTab({ disciplinas, onDisciplinasChange }: DisciplinasTabProps) {
+export function DisciplinasTab() {
+  const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina, loading, error } = useFirestoreCollection<Disciplina>('disciplinas');
   const [formData, setFormData] = useState({
     nome: '',
     cargaHorariaSemanal: 4,
@@ -25,7 +22,7 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
   const [editModalOpen, setEditModalOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nome.trim()) {
@@ -37,14 +34,13 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
       return;
     }
 
-    const novaDisciplina: Disciplina = {
-      id: Date.now().toString(),
+    const novaDisciplina = {
       nome: formData.nome.trim(),
       cargaHorariaSemanal: formData.cargaHorariaSemanal,
       permiteAulasGeminadas: formData.permiteAulasGeminadas,
     };
 
-    onDisciplinasChange([...disciplinas, novaDisciplina]);
+    await addDisciplina(novaDisciplina);
     setFormData({ nome: '', cargaHorariaSemanal: 4, permiteAulasGeminadas: false });
     
     toast({
@@ -58,7 +54,7 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
     setEditModalOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!editingDisciplina || !editingDisciplina.nome.trim()) {
@@ -70,11 +66,12 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
       return;
     }
 
-    const disciplinasAtualizadas = disciplinas.map(d => 
-      d.id === editingDisciplina.id ? editingDisciplina : d
-    );
+    await updateDisciplina(editingDisciplina.id, {
+      nome: editingDisciplina.nome.trim(),
+      cargaHorariaSemanal: editingDisciplina.cargaHorariaSemanal,
+      permiteAulasGeminadas: editingDisciplina.permiteAulasGeminadas,
+    });
     
-    onDisciplinasChange(disciplinasAtualizadas);
     setEditModalOpen(false);
     setEditingDisciplina(null);
     
@@ -84,8 +81,8 @@ export function DisciplinasTab({ disciplinas, onDisciplinasChange }: Disciplinas
     });
   };
 
-  const handleDelete = (id: string) => {
-    onDisciplinasChange(disciplinas.filter(d => d.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteDisciplina(id);
     toast({
       title: "Sucesso",
       description: "Disciplina removida com sucesso!",
