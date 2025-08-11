@@ -86,6 +86,8 @@ export function TurmasTab() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('handleEditSubmit called for turma', editingTurma);
+    
     if (!editingTurma) return;
 
     if (!editingTurma.nome.trim() || !editingTurma.serie || !editingTurma.turno || !editingTurma.escolaId) {
@@ -115,23 +117,42 @@ export function TurmasTab() {
       return;
     }
 
-    await updateTurma(editingTurma.id, {
-      nome: editingTurma.nome.trim(),
-      serie: editingTurma.serie,
-      turno: editingTurma.turno,
-      disciplinas: editingTurma.disciplinas,
-      escolaId: editingTurma.escolaId,
-      vagas: editingTurma.vagas,
-      vagasOcupadas: editingTurma.vagasOcupadas,
-    });
-    
-    setIsEditDialogOpen(false);
-    setEditingTurma(null);
-    
-    toast({
-      title: "Sucesso",
-      description: "Turma atualizada com sucesso!",
-    });
+    try {
+      console.log('Updating turma:', editingTurma.id, {
+        nome: editingTurma.nome.trim(),
+        serie: editingTurma.serie,
+        turno: editingTurma.turno,
+        disciplinas: editingTurma.disciplinas,
+        escolaId: editingTurma.escolaId,
+        vagas: editingTurma.vagas,
+        vagasOcupadas: editingTurma.vagasOcupadas,
+      });
+      
+      await updateTurma(editingTurma.id, {
+        nome: editingTurma.nome.trim(),
+        serie: editingTurma.serie,
+        turno: editingTurma.turno,
+        disciplinas: editingTurma.disciplinas,
+        escolaId: editingTurma.escolaId,
+        vagas: editingTurma.vagas,
+        vagasOcupadas: editingTurma.vagasOcupadas,
+      });
+      
+      setIsEditDialogOpen(false);
+      setEditingTurma(null);
+      
+      toast({
+        title: "Sucesso",
+        description: "Turma atualizada com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar turma:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar turma",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = async (id: string) => {

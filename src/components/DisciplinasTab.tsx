@@ -57,6 +57,8 @@ export function DisciplinasTab() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('handleEditSubmit called', editingDisciplina);
+    
     if (!editingDisciplina || !editingDisciplina.nome.trim()) {
       toast({
         title: "Erro",
@@ -66,19 +68,34 @@ export function DisciplinasTab() {
       return;
     }
 
-    await updateDisciplina(editingDisciplina.id, {
-      nome: editingDisciplina.nome.trim(),
-      cargaHorariaSemanal: editingDisciplina.cargaHorariaSemanal,
-      permiteAulasGeminadas: editingDisciplina.permiteAulasGeminadas,
-    });
-    
-    setEditModalOpen(false);
-    setEditingDisciplina(null);
-    
-    toast({
-      title: "Sucesso",
-      description: "Disciplina atualizada com sucesso!",
-    });
+    try {
+      console.log('Updating disciplina:', editingDisciplina.id, {
+        nome: editingDisciplina.nome.trim(),
+        cargaHorariaSemanal: editingDisciplina.cargaHorariaSemanal,
+        permiteAulasGeminadas: editingDisciplina.permiteAulasGeminadas,
+      });
+      
+      await updateDisciplina(editingDisciplina.id, {
+        nome: editingDisciplina.nome.trim(),
+        cargaHorariaSemanal: editingDisciplina.cargaHorariaSemanal,
+        permiteAulasGeminadas: editingDisciplina.permiteAulasGeminadas,
+      });
+      
+      setEditModalOpen(false);
+      setEditingDisciplina(null);
+      
+      toast({
+        title: "Sucesso",
+        description: "Disciplina atualizada com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar disciplina:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar disciplina",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = async (id: string) => {
