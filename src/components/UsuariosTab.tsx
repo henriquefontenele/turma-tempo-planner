@@ -58,11 +58,13 @@ export function UsuariosTab() {
 
   const loadEscolas = async () => {
     try {
+      console.log('Carregando escolas...');
       const querySnapshot = await getDocs(collection(db, 'escolas'));
       const escolasData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Escola[];
+      console.log('Escolas carregadas:', escolasData);
       setEscolas(escolasData);
     } catch (error) {
       console.error('Erro ao carregar escolas:', error);
