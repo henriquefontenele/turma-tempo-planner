@@ -48,48 +48,100 @@ const MatriculaPublica = () => {
     const doc = new jsPDF();
     const escola = escolas.find(e => e.id === matricula.escolaId);
     const turma = turmas.find(t => t.id === matricula.turmaId);
-
-    doc.setFontSize(20);
-    doc.text('COMPROVANTE DE MATRÍCULA', 20, 30);
     
+    // Configurações de página
+    const pageWidth = doc.internal.pageSize.width;
+    const centerX = pageWidth / 2;
+    
+    // Data no topo direito
     doc.setFontSize(12);
-    doc.text(`Escola: ${escola?.nome || 'N/A'}`, 20, 50);
-    doc.text(`Número da Matrícula: ${matricula.numeroMatricula}`, 20, 60);
-    doc.text(`Data da Matrícula: ${new Date(matricula.dataMatricula).toLocaleDateString('pt-BR')}`, 20, 70);
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    doc.text(dataAtual, pageWidth - 20, 20, { align: 'right' });
     
+    // Nome da escola centralizado
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text((escola?.nome || 'ESCOLA').toUpperCase(), centerX, 40, { align: 'center' });
+    
+    // Título do documento
     doc.setFontSize(14);
-    doc.text('DADOS DO ESTUDANTE', 20, 90);
-    doc.setFontSize(12);
-    doc.text(`Nome: ${estudante.nome}`, 20, 105);
-    doc.text(`CPF: ${estudante.cpf}`, 20, 115);
-    doc.text(`Data de Nascimento: ${new Date(estudante.dataNascimento).toLocaleDateString('pt-BR')}`, 20, 125);
-    doc.text(`E-mail: ${estudante.email}`, 20, 135);
-    doc.text(`Telefone: ${estudante.telefone}`, 20, 145);
-    doc.text(`Endereço: ${estudante.endereco}`, 20, 155);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`COMPROVANTE DE MATRÍCULA - Nº ${matricula.numeroMatricula}`, centerX, 55, { align: 'center' });
     
+    // Linha separadora
+    doc.setLineWidth(0.5);
+    doc.line(20, 60, pageWidth - 20, 60);
+    
+    // Mensagem de parabéns
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Parabéns!', centerX, 75, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Sua matrícula foi processada com sucesso.', centerX, 85, { align: 'center' });
+    
+    // Linha separadora
+    doc.line(20, 95, pageWidth - 20, 95);
+    
+    // Seção DADOS DO ALUNO
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DADOS DO ALUNO', centerX, 110, { align: 'center' });
+    
+    // Linha separadora pequena
+    doc.line(20, 115, pageWidth - 20, 115);
+    
+    doc.setFont('helvetica', 'normal');
+    let yPos = 130;
+    doc.text(`Nome do Aluno: ${estudante.nome}`, 30, yPos);
+    yPos += 10;
+    doc.text(`Data de Nascimento: ${new Date(estudante.dataNascimento).toLocaleDateString('pt-BR')}`, 30, yPos);
+    yPos += 10;
+    doc.text(`Série/Ano: ${turma?.serie || 'N/A'}`, 30, yPos);
+    yPos += 10;
+    doc.text(`Turma: ${turma?.nome || 'N/A'} - ${turma?.turno || 'N/A'}`, 30, yPos);
+    yPos += 10;
+    doc.text(`CPF: ${estudante.cpf}`, 30, yPos);
+    yPos += 20;
+    
+    // Seção RESPONSÁVEL PELA MATRÍCULA (se houver)
     if (estudante.nomeResponsavel) {
-      doc.text(`Responsável: ${estudante.nomeResponsavel}`, 20, 165);
-      doc.text(`Telefone do Responsável: ${estudante.telefoneResponsavel}`, 20, 175);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RESPONSÁVEL PELA MATRÍCULA', centerX, yPos, { align: 'center' });
+      
+      // Linha separadora pequena
+      doc.line(20, yPos + 5, pageWidth - 20, yPos + 5);
+      
+      doc.setFont('helvetica', 'normal');
+      yPos += 20;
+      doc.text(`Nome Responsável: ${estudante.nomeResponsavel}`, 30, yPos);
+      yPos += 10;
+      doc.text('Relação com o Aluno: Responsável Legal', 30, yPos);
+      yPos += 20;
     }
-
-    doc.setFontSize(14);
-    doc.text('DADOS DA TURMA', 20, 195);
-    doc.setFontSize(12);
-    doc.text(`Turma: ${turma?.nome || 'N/A'}`, 20, 210);
-    doc.text(`Série: ${turma?.serie || 'N/A'}`, 20, 220);
-    doc.text(`Turno: ${turma?.turno || 'N/A'}`, 20, 230);
-
-    if (matricula.observacoes) {
-      doc.setFontSize(14);
-      doc.text('OBSERVAÇÕES', 20, 250);
-      doc.setFontSize(12);
-      const splitText = doc.splitTextToSize(matricula.observacoes, 170);
-      doc.text(splitText, 20, 265);
-    }
-
+    
+    // Informações de contato/endereço
+    doc.line(20, yPos, pageWidth - 20, yPos);
+    yPos += 15;
+    
     doc.setFontSize(10);
-    doc.text('Este documento comprova a matrícula do estudante na instituição.', 20, 280);
-    doc.text(`Documento gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 290);
+    doc.text(`Endereço: ${estudante.endereco}`, 30, yPos);
+    yPos += 8;
+    doc.text(`Telefone: ${estudante.telefone}`, 30, yPos);
+    yPos += 8;
+    doc.text(`Email: ${estudante.email}`, 30, yPos);
+    yPos += 15;
+    
+    // Rodapé
+    doc.line(20, yPos, pageWidth - 20, yPos);
+    yPos += 10;
+    doc.setFontSize(9);
+    doc.text('Este documento comprova a matrícula do estudante na instituição de ensino.', centerX, yPos, { align: 'center' });
+    yPos += 8;
+    doc.text(`Data da Matrícula: ${new Date(matricula.dataMatricula).toLocaleDateString('pt-BR')}`, centerX, yPos, { align: 'center' });
+    yPos += 8;
+    doc.text(`Documento gerado em: ${new Date().toLocaleString('pt-BR')}`, centerX, yPos, { align: 'center' });
 
     doc.save(`comprovante-matricula-${matricula.numeroMatricula}.pdf`);
   };
