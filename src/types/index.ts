@@ -146,6 +146,6 @@ export interface UserProfile {
   email: string;
   nome: string;
   role: UserRole;
-  escolaId?: string;
+  escolaIds?: string[];
   ativo: boolean;
 }

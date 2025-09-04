@@ -11,12 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { UserProfile, UserRole } from '@/types';
+import { Checkbox } from '@/components/ui/checkbox';
+import { UserProfile, UserRole, Escola } from '@/types';
 import { Edit, Trash2, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function UsuariosTab() {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
+  const [escolas, setEscolas] = useState<Escola[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -29,6 +31,7 @@ export function UsuariosTab() {
   useEffect(() => {
     if (canManageUsers) {
       loadUsuarios();
+      loadEscolas();
     }
   }, [canManageUsers]);
 
@@ -53,6 +56,19 @@ export function UsuariosTab() {
     }
   };
 
+  const loadEscolas = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'escolas'));
+      const escolasData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Escola[];
+      setEscolas(escolasData.filter(escola => escola.ativa));
+    } catch (error) {
+      console.error('Erro ao carregar escolas:', error);
+    }
+  };
+
   const handleEditUser = (user: UserProfile) => {
     setEditingUser(user);
     setIsDialogOpen(true);
@@ -69,9 +85,9 @@ export function UsuariosTab() {
         ativo: editingUser.ativo,
       };
 
-      // Só incluir escolaId se não for undefined
-      if (editingUser.escolaId !== undefined) {
-        updateData.escolaId = editingUser.escolaId;
+      // Só incluir escolaIds se não for undefined
+      if (editingUser.escolaIds !== undefined) {
+        updateData.escolaIds = editingUser.escolaIds;
       }
 
       await updateDoc(doc(db, 'users', editingUser.id), updateData);
@@ -175,6 +191,7 @@ export function UsuariosTab() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Nível</TableHead>
+                <TableHead>Escolas</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
@@ -188,6 +205,22 @@ export function UsuariosTab() {
                     <Badge variant={getRoleBadgeVariant(usuario.role)} className="capitalize">
                       {usuario.role}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {usuario.escolaIds && usuario.escolaIds.length > 0 ? (
+                        usuario.escolaIds.map(escolaId => {
+                          const escola = escolas.find(e => e.id === escolaId);
+                          return escola ? (
+                            <Badge key={escolaId} variant="outline" className="text-xs">
+                              {escola.nome}
+                            </Badge>
+                          ) : null;
+                        })
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Nenhuma escola</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={usuario.ativo ? "default" : "secondary"}>
@@ -273,6 +306,38 @@ export function UsuariosTab() {
                     <SelectItem value="professor">Professor</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label>Escolas Associadas</Label>
+                <div className="grid grid-cols-1 gap-2 mt-2 max-h-32 overflow-y-auto border rounded p-2">
+                  {escolas.map((escola) => (
+                    <div key={escola.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`escola-${escola.id}`}
+                        checked={editingUser.escolaIds?.includes(escola.id) || false}
+                        onCheckedChange={(checked) => {
+                          const currentEscolas = editingUser.escolaIds || [];
+                          if (checked) {
+                            setEditingUser({
+                              ...editingUser,
+                              escolaIds: [...currentEscolas, escola.id]
+                            });
+                          } else {
+                            setEditingUser({
+                              ...editingUser,
+                              escolaIds: currentEscolas.filter(id => id !== escola.id)
+                            });
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`escola-${escola.id}`} className="text-sm">{escola.nome}</Label>
+                    </div>
+                  ))}
+                  {escolas.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nenhuma escola cadastrada</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">
