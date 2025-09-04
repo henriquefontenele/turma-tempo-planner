@@ -63,7 +63,7 @@ export function UsuariosTab() {
         id: doc.id,
         ...doc.data()
       })) as Escola[];
-      setEscolas(escolasData.filter(escola => escola.ativa));
+      setEscolas(escolasData);
     } catch (error) {
       console.error('Erro ao carregar escolas:', error);
     }
