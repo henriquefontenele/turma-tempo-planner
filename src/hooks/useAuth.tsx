@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!userProfile) return false;
     
     const rolePermissions: Record<UserRole, string[]> = {
-      administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio', 'usuarios'],
+      administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio', 'usuarios', 'perfis'],
       diretor: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio'],
       coordenador: ['disciplinas', 'turmas', 'gerador', 'horarios', 'professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
       secretario: ['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
