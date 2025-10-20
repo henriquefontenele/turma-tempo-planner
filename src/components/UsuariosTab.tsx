@@ -22,6 +22,8 @@ export function UsuariosTab() {
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState<string>('all');
   const { userProfile } = useAuth();
   const { toast } = useToast();
 
@@ -161,6 +163,17 @@ export function UsuariosTab() {
     );
   }
 
+  // Filtrar usuários baseado na busca e no perfil selecionado
+  const filteredUsuarios = usuarios.filter(usuario => {
+    const matchesSearch = 
+      usuario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      usuario.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = selectedRole === 'all' || usuario.role === selectedRole;
+    
+    return matchesSearch && matchesRole;
+  });
+
   if (loading) {
     return (
       <Card>
@@ -178,15 +191,44 @@ export function UsuariosTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Gerenciamento de Usuários
-          </CardTitle>
-          <CardDescription>
-            Gerencie os usuários do sistema e seus níveis de acesso.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Lista de Usuários
+              </CardTitle>
+              <CardDescription>
+                Usuários ativos no sistema
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1 relative">
+              <Input
+                placeholder="Buscar usuários..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Filtrar por perfil" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os perfis</SelectItem>
+                <SelectItem value="administrador">Administrador</SelectItem>
+                <SelectItem value="diretor">Diretor</SelectItem>
+                <SelectItem value="coordenador">Coordenador</SelectItem>
+                <SelectItem value="secretario">Secretário</SelectItem>
+                <SelectItem value="professor">Professor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <Table>
             <TableHeader>
               <TableRow>
@@ -199,7 +241,7 @@ export function UsuariosTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usuarios.map((usuario) => (
+              {filteredUsuarios.map((usuario) => (
                 <TableRow key={usuario.id}>
                   <TableCell className="font-medium">{usuario.nome}</TableCell>
                   <TableCell>{usuario.email}</TableCell>

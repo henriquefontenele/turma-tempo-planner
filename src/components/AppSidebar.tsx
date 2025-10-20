@@ -29,7 +29,7 @@ const menuGroups = [
     ]
   },
   {
-    label: 'SISTEMA',
+    label: 'USUÁRIOS',
     items: [
       { id: 'usuarios', label: 'Usuários', emoji: '👤' },
     ]
