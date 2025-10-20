@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PerfilAcesso, Permissao, UserProfile } from '@/types';
-import { Shield, Edit, Trash2, Users, Check, Plus } from 'lucide-react';
+import { Shield, Edit, Trash2, Users, Check, Plus, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; label: string }[] }[] = [
@@ -78,6 +79,8 @@ export function PerfisTab() {
   const [editingPerfil, setEditingPerfil] = useState<PerfilAcesso | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEditavel, setSelectedEditavel] = useState<string>('todos');
   const { userProfile } = useAuth();
   const { toast } = useToast();
 
@@ -289,6 +292,18 @@ export function PerfisTab() {
   const permissoesHerdadas = editingPerfil?.herdarDe ? getPermissoesHerdadas(editingPerfil.herdarDe) : [];
   const todasPermissoes = [...new Set([...permissoesHerdadas, ...(editingPerfil?.permissoes || [])])];
 
+  // Filtrar perfis
+  const filteredPerfis = perfis.filter(perfil => {
+    const matchesSearch = perfil.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         perfil.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesEditavel = selectedEditavel === 'todos' ||
+                           (selectedEditavel === 'editavel' && perfil.editavel) ||
+                           (selectedEditavel === 'nao-editavel' && !perfil.editavel);
+    
+    return matchesSearch && matchesEditavel;
+  });
+
   return (
     <div className="space-y-6">
       <Card>
@@ -309,78 +324,128 @@ export function PerfisTab() {
             </Button>
           </div>
         </CardHeader>
-      </Card>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar por nome ou descrição..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={selectedEditavel} onValueChange={setSelectedEditavel}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Tipo de perfil" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="editavel">Editáveis</SelectItem>
+                <SelectItem value="nao-editavel">Não Editáveis</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {perfis.map((perfil) => {
-          const usuariosCount = getUsuariosCount(perfil.id);
-          const permissoesHerdadas = perfil.herdarDe ? getPermissoesHerdadas(perfil.herdarDe) : [];
-          const todasPermissoesPerfil = [...new Set([...permissoesHerdadas, ...perfil.permissoes])];
-          
-          return (
-            <Card key={perfil.id} className="relative">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg capitalize">{perfil.nome}</CardTitle>
-                    <CardDescription className="mt-1">{perfil.descricao}</CardDescription>
-                  </div>
-                  {perfil.editavel && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditPerfil(perfil)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeletePerfil(perfil.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <span>{usuariosCount} usuários</span>
-                </div>
-                
-                <div>
-                  <p className="text-sm font-medium mb-2">Permissões:</p>
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {todasPermissoesPerfil.slice(0, 5).map(permissaoId => {
-                      const permissao = PERMISSOES_DISPONIVEIS
-                        .flatMap(g => g.permissoes)
-                        .find(p => p.id === permissaoId);
-                      const isHerdada = permissoesHerdadas.includes(permissaoId);
-                      return (
-                        <div key={permissaoId} className="flex items-center gap-2 text-sm">
-                          <Check className="h-3 w-3 text-green-600" />
-                          <span className={isHerdada ? 'text-muted-foreground' : ''}>
-                            {permissao?.label}
-                            {isHerdada && ' (herdada)'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {todasPermissoesPerfil.length > 5 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{todasPermissoesPerfil.length - 5} permissões
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Usuários</TableHead>
+                  <TableHead>Permissões</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPerfis.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      Nenhum perfil encontrado
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPerfis.map((perfil) => {
+                    const usuariosCount = getUsuariosCount(perfil.id);
+                    const permissoesHerdadas = perfil.herdarDe ? getPermissoesHerdadas(perfil.herdarDe) : [];
+                    const todasPermissoesPerfil = [...new Set([...permissoesHerdadas, ...perfil.permissoes])];
+                    
+                    return (
+                      <TableRow key={perfil.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span className="capitalize">{perfil.nome}</span>
+                            {!perfil.editavel && (
+                              <Badge variant="secondary" className="text-xs">Sistema</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{perfil.descricao}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span>{usuariosCount}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {todasPermissoesPerfil.slice(0, 3).map(permissaoId => {
+                              const permissao = PERMISSOES_DISPONIVEIS
+                                .flatMap(g => g.permissoes)
+                                .find(p => p.id === permissaoId);
+                              return (
+                                <Badge key={permissaoId} variant="outline" className="text-xs">
+                                  {permissao?.label}
+                                </Badge>
+                              );
+                            })}
+                            {todasPermissoesPerfil.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{todasPermissoesPerfil.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {perfil.editavel ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditPerfil(perfil)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeletePerfil(perfil.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled
+                              >
+                                <Shield className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
