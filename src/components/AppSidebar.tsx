@@ -32,6 +32,7 @@ const menuGroups = [
     label: 'USUÁRIOS',
     items: [
       { id: 'usuarios', label: 'Usuários', emoji: '👤' },
+      { id: 'perfis', label: 'Perfis de Acesso', emoji: '🔒' },
     ]
   },
   {

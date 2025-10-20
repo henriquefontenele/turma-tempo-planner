@@ -18,6 +18,7 @@ import { GeradorTab } from '@/components/GeradorTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
 import { UsuariosTab } from '@/components/UsuariosTab';
+import { PerfisTab } from '@/components/PerfisTab';
 import { Dashboard } from '@/components/Dashboard';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 
@@ -36,7 +37,8 @@ const tabNames: Record<string, string> = {
   academico: 'Frequência',
   notas: 'Notas',
   relatorio: 'Relatório',
-  usuarios: 'Usuários'
+  usuarios: 'Usuários',
+  perfis: 'Perfis de Acesso'
 };
 
 export default function Index() {
@@ -298,6 +300,8 @@ export default function Index() {
         );
       case 'usuarios':
         return <UsuariosTab />;
+      case 'perfis':
+        return <PerfisTab />;
       default:
         return (
           <Dashboard

@@ -149,3 +149,33 @@ export interface UserProfile {
   escolaIds?: string[];
   ativo: boolean;
 }
+
+export type Permissao = 
+  | 'criar_documentos'
+  | 'visualizar_documentos'
+  | 'gerenciar_usuarios'
+  | 'acessar_relatorios'
+  | 'configuracoes_sistema'
+  | 'gerenciar_escolas'
+  | 'gerenciar_turmas'
+  | 'gerenciar_disciplinas'
+  | 'gerenciar_professores'
+  | 'gerenciar_alunos'
+  | 'gerenciar_matriculas'
+  | 'gerar_horarios'
+  | 'visualizar_horarios'
+  | 'registrar_frequencia'
+  | 'visualizar_frequencia'
+  | 'registrar_notas'
+  | 'visualizar_notas'
+  | 'gerenciar_integracao';
+
+export interface PerfilAcesso {
+  id: string;
+  nome: string;
+  descricao: string;
+  permissoes: Permissao[];
+  herdarDe?: string; // ID do perfil do qual herda permissões
+  editavel: boolean; // Se pode ser editado (administrador é false)
+  usuariosCount?: number;
+}
