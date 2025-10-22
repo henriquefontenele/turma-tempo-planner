@@ -76,6 +76,7 @@ export function PerfisTab() {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEditavel, setSelectedEditavel] = useState<string>('todos');
+  const [selectedFuncionalidade, setSelectedFuncionalidade] = useState<string>('todas');
   const { userProfile } = useAuth();
   const { toast } = useToast();
 
@@ -287,6 +288,25 @@ export function PerfisTab() {
   const permissoesHerdadas = editingPerfil?.herdarDe ? getPermissoesHerdadas(editingPerfil.herdarDe) : [];
   const todasPermissoes = [...new Set([...permissoesHerdadas, ...(editingPerfil?.permissoes || [])])];
 
+  // Mapeamento de funcionalidades para permissões
+  const funcionalidadeParaPermissoes: { [key: string]: Permissao[] } = {
+    'disciplinas': ['gerenciar_disciplinas'],
+    'professores': ['gerenciar_professores'],
+    'turmas': ['gerenciar_turmas'],
+    'escolas': ['gerenciar_escolas'],
+    'config': ['configuracoes_sistema'],
+    'usuarios': ['gerenciar_usuarios'],
+    'perfis': ['gerenciar_perfis'],
+    'alunos': ['gerenciar_alunos'],
+    'matricula': ['gerenciar_matriculas'],
+    'vagas': ['gerenciar_vagas'],
+    'gerador': ['gerar_horarios'],
+    'horarios': ['visualizar_horarios'],
+    'academico': ['gerenciar_academico', 'registrar_frequencia', 'visualizar_frequencia'],
+    'notas': ['registrar_notas', 'visualizar_notas'],
+    'relatorio': ['acessar_relatorios'],
+  };
+
   // Filtrar perfis
   const filteredPerfis = perfis.filter(perfil => {
     const matchesSearch = perfil.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -296,7 +316,16 @@ export function PerfisTab() {
                            (selectedEditavel === 'editavel' && perfil.editavel) ||
                            (selectedEditavel === 'nao-editavel' && !perfil.editavel);
     
-    return matchesSearch && matchesEditavel;
+    const permissoesPerfil = perfil.herdarDe 
+      ? [...new Set([...getPermissoesHerdadas(perfil.herdarDe), ...perfil.permissoes])]
+      : perfil.permissoes;
+    
+    const matchesFuncionalidade = selectedFuncionalidade === 'todas' ||
+      funcionalidadeParaPermissoes[selectedFuncionalidade]?.some(perm => 
+        permissoesPerfil.includes(perm)
+      );
+    
+    return matchesSearch && matchesEditavel && matchesFuncionalidade;
   });
 
   return (
@@ -330,6 +359,29 @@ export function PerfisTab() {
                 className="pl-10"
               />
             </div>
+            <Select value={selectedFuncionalidade} onValueChange={setSelectedFuncionalidade}>
+              <SelectTrigger className="w-full md:w-[220px]">
+                <SelectValue placeholder="Filtrar por funcionalidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as funcionalidades</SelectItem>
+                <SelectItem value="disciplinas">📚 Disciplinas</SelectItem>
+                <SelectItem value="professores">👨‍🏫 Professores</SelectItem>
+                <SelectItem value="turmas">🎓 Turmas</SelectItem>
+                <SelectItem value="escolas">🏫 Escolas</SelectItem>
+                <SelectItem value="config">⚙️ Turnos</SelectItem>
+                <SelectItem value="usuarios">👤 Usuários</SelectItem>
+                <SelectItem value="perfis">🔒 Perfis de Acesso</SelectItem>
+                <SelectItem value="alunos">👥 Alunos</SelectItem>
+                <SelectItem value="matricula">📝 Matrícula</SelectItem>
+                <SelectItem value="vagas">🎯 Vagas</SelectItem>
+                <SelectItem value="gerador">🎯 Gerador</SelectItem>
+                <SelectItem value="horarios">📅 Horários</SelectItem>
+                <SelectItem value="academico">📋 Frequência</SelectItem>
+                <SelectItem value="notas">📝 Notas</SelectItem>
+                <SelectItem value="relatorio">📊 Relatório</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={selectedEditavel} onValueChange={setSelectedEditavel}>
               <SelectTrigger className="w-full md:w-[200px]">
                 <SelectValue placeholder="Tipo de perfil" />
