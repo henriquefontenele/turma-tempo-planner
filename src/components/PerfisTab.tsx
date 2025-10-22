@@ -18,16 +18,10 @@ import { useToast } from '@/hooks/use-toast';
 
 const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; label: string }[] }[] = [
   {
-    grupo: 'Documentos',
-    permissoes: [
-      { id: 'criar_documentos', label: 'Criar documentos' },
-      { id: 'visualizar_documentos', label: 'Visualizar documentos' },
-    ]
-  },
-  {
     grupo: 'Sistema',
     permissoes: [
       { id: 'gerenciar_usuarios', label: 'Gerenciar usuários' },
+      { id: 'gerenciar_perfis', label: 'Gerenciar perfis de acesso' },
       { id: 'configuracoes_sistema', label: 'Configurações do sistema' },
     ]
   },
@@ -39,7 +33,13 @@ const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; labe
       { id: 'gerenciar_disciplinas', label: 'Gerenciar disciplinas' },
       { id: 'gerenciar_professores', label: 'Gerenciar professores' },
       { id: 'gerenciar_alunos', label: 'Gerenciar alunos' },
+    ]
+  },
+  {
+    grupo: 'Matrículas e Vagas',
+    permissoes: [
       { id: 'gerenciar_matriculas', label: 'Gerenciar matrículas' },
+      { id: 'gerenciar_vagas', label: 'Gerenciar vagas' },
     ]
   },
   {
@@ -52,6 +52,7 @@ const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; labe
   {
     grupo: 'Acadêmico',
     permissoes: [
+      { id: 'gerenciar_academico', label: 'Acessar módulo acadêmico' },
       { id: 'registrar_frequencia', label: 'Registrar frequência' },
       { id: 'visualizar_frequencia', label: 'Visualizar frequência' },
       { id: 'registrar_notas', label: 'Registrar notas' },
@@ -62,12 +63,6 @@ const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; labe
     grupo: 'Relatórios',
     permissoes: [
       { id: 'acessar_relatorios', label: 'Acessar relatórios' },
-    ]
-  },
-  {
-    grupo: 'Integrações',
-    permissoes: [
-      { id: 'gerenciar_integracao', label: 'Gerenciar integrações' },
     ]
   }
 ];

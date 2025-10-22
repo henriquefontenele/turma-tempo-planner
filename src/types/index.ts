@@ -151,10 +151,8 @@ export interface UserProfile {
 }
 
 export type Permissao = 
-  | 'criar_documentos'
-  | 'visualizar_documentos'
   | 'gerenciar_usuarios'
-  | 'acessar_relatorios'
+  | 'gerenciar_perfis'
   | 'configuracoes_sistema'
   | 'gerenciar_escolas'
   | 'gerenciar_turmas'
@@ -162,13 +160,15 @@ export type Permissao =
   | 'gerenciar_professores'
   | 'gerenciar_alunos'
   | 'gerenciar_matriculas'
+  | 'gerenciar_vagas'
   | 'gerar_horarios'
   | 'visualizar_horarios'
+  | 'gerenciar_academico'
   | 'registrar_frequencia'
   | 'visualizar_frequencia'
   | 'registrar_notas'
   | 'visualizar_notas'
-  | 'gerenciar_integracao';
+  | 'acessar_relatorios';
 
 export interface PerfilAcesso {
   id: string;
