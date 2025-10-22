@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PerfilAcesso, Permissao, UserProfile } from '@/types';
-import { Shield, Edit, Trash2, Users, Check, Plus, Search } from 'lucide-react';
+import { Shield, Edit, Trash2, Users, Check, Plus, Search, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; label: string }[] }[] = [
@@ -72,7 +72,9 @@ export function PerfisTab() {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingPerfil, setEditingPerfil] = useState<PerfilAcesso | null>(null);
+  const [viewingPerfil, setViewingPerfil] = useState<PerfilAcesso | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEditavel, setSelectedEditavel] = useState<string>('todos');
@@ -137,6 +139,11 @@ export function PerfisTab() {
     });
     setIsCreating(true);
     setIsDialogOpen(true);
+  };
+
+  const handleViewPerfil = (perfil: PerfilAcesso) => {
+    setViewingPerfil(perfil);
+    setIsViewDialogOpen(true);
   };
 
   const handleEditPerfil = (perfil: PerfilAcesso) => {
@@ -456,12 +463,21 @@ export function PerfisTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewPerfil(perfil)}
+                              title="Visualizar perfil"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             {perfil.editavel ? (
                               <>
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleEditPerfil(perfil)}
+                                  title="Editar perfil"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
@@ -469,6 +485,7 @@ export function PerfisTab() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleDeletePerfil(perfil.id)}
+                                  title="Excluir perfil"
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -478,6 +495,7 @@ export function PerfisTab() {
                                 variant="ghost"
                                 size="icon"
                                 disabled
+                                title="Perfil do sistema (não editável)"
                               >
                                 <Shield className="h-4 w-4" />
                               </Button>
@@ -614,6 +632,115 @@ export function PerfisTab() {
             </Button>
             <Button onClick={handleSavePerfil}>
               {isCreating ? 'Criar Perfil' : 'Salvar Alterações'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Visualização */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Visualizar Perfil
+            </DialogTitle>
+            <DialogDescription>
+              Detalhes do perfil de acesso (somente leitura)
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingPerfil && (() => {
+            const permissoesHerdadas = viewingPerfil.herdarDe ? getPermissoesHerdadas(viewingPerfil.herdarDe) : [];
+            const todasPermissoes = [...new Set([...permissoesHerdadas, ...viewingPerfil.permissoes])];
+            const perfilPai = viewingPerfil.herdarDe ? perfis.find(p => p.id === viewingPerfil.herdarDe) : null;
+            
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Nome do Perfil</Label>
+                    <div className="mt-1 p-2 bg-muted rounded-md flex items-center gap-2">
+                      <span className="font-medium capitalize">{viewingPerfil.nome}</span>
+                      {!viewingPerfil.editavel && (
+                        <Badge variant="secondary" className="text-xs">Sistema</Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-muted-foreground">Herdar Permissões De</Label>
+                    <div className="mt-1 p-2 bg-muted rounded-md">
+                      <span className="capitalize">{perfilPai?.nome || 'Nenhum'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground">Descrição</Label>
+                  <div className="mt-1 p-2 bg-muted rounded-md min-h-[60px]">
+                    {viewingPerfil.descricao || 'Sem descrição'}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground">Usuários com este perfil</Label>
+                  <div className="mt-1 p-2 bg-muted rounded-md flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span>{getUsuariosCount(viewingPerfil.id)} usuário(s)</span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground mb-3 block">
+                    Permissões ({todasPermissoes.length})
+                  </Label>
+                  <div className="space-y-4 border rounded-md p-4 bg-muted/50">
+                    {PERMISSOES_DISPONIVEIS.map((grupo) => {
+                      const permissoesGrupo = grupo.permissoes.filter(p => 
+                        todasPermissoes.includes(p.id)
+                      );
+                      
+                      if (permissoesGrupo.length === 0) return null;
+                      
+                      return (
+                        <div key={grupo.grupo}>
+                          <h4 className="font-semibold text-sm mb-2 text-foreground">{grupo.grupo}</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {permissoesGrupo.map((permissao) => {
+                              const isHerdada = permissoesHerdadas.includes(permissao.id);
+                              const isDireta = viewingPerfil.permissoes.includes(permissao.id);
+                              
+                              return (
+                                <div key={permissao.id} className="flex items-center gap-2 p-2 bg-background rounded">
+                                  <Check className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm">{permissao.label}</span>
+                                  {isHerdada && !isDireta && (
+                                    <Badge variant="outline" className="text-xs ml-auto">
+                                      Herdada
+                                    </Badge>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setIsViewDialogOpen(false);
+                setViewingPerfil(null);
+              }}
+            >
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
