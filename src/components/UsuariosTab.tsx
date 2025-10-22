@@ -12,13 +12,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { UserProfile, UserRole, Escola } from '@/types';
+import { UserProfile, UserRole, Escola, PerfilAcesso } from '@/types';
 import { Edit, Trash2, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function UsuariosTab() {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
   const [escolas, setEscolas] = useState<Escola[]>([]);
+  const [perfis, setPerfis] = useState<PerfilAcesso[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +35,7 @@ export function UsuariosTab() {
     if (canManageUsers) {
       loadUsuarios();
       loadEscolas();
+      loadPerfis();
     }
   }, [canManageUsers]);
 
@@ -70,6 +72,26 @@ export function UsuariosTab() {
       setEscolas(escolasData);
     } catch (error) {
       console.error('Erro ao carregar escolas:', error);
+    }
+  };
+
+  const loadPerfis = async () => {
+    try {
+      console.log('Carregando perfis...');
+      const querySnapshot = await getDocs(collection(db, 'perfis-acesso'));
+      const perfisData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as PerfilAcesso[];
+      console.log('Perfis carregados:', perfisData);
+      setPerfis(perfisData);
+    } catch (error) {
+      console.error('Erro ao carregar perfis:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar perfis de acesso.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -220,11 +242,11 @@ export function UsuariosTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os perfis</SelectItem>
-                <SelectItem value="administrador">Administrador</SelectItem>
-                <SelectItem value="diretor">Diretor</SelectItem>
-                <SelectItem value="coordenador">Coordenador</SelectItem>
-                <SelectItem value="secretario">Secretário</SelectItem>
-                <SelectItem value="professor">Professor</SelectItem>
+                {perfis.map(perfil => (
+                  <SelectItem key={perfil.id} value={perfil.id}>
+                    {perfil.nome}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -247,7 +269,7 @@ export function UsuariosTab() {
                   <TableCell>{usuario.email}</TableCell>
                   <TableCell>
                     <Badge variant={getRoleBadgeVariant(usuario.role)} className="capitalize">
-                      {usuario.role}
+                      {perfis.find(p => p.id === usuario.role)?.nome || usuario.role}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -331,7 +353,7 @@ export function UsuariosTab() {
               </div>
 
               <div>
-                <Label htmlFor="role">Nível de Acesso</Label>
+                <Label htmlFor="role">Perfil de Acesso</Label>
                 <Select
                   value={editingUser.role}
                   onValueChange={(value: UserRole) => setEditingUser({
@@ -343,11 +365,11 @@ export function UsuariosTab() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="administrador">Administrador</SelectItem>
-                    <SelectItem value="diretor">Diretor</SelectItem>
-                    <SelectItem value="coordenador">Coordenador</SelectItem>
-                    <SelectItem value="secretario">Secretário</SelectItem>
-                    <SelectItem value="professor">Professor</SelectItem>
+                    {perfis.map(perfil => (
+                      <SelectItem key={perfil.id} value={perfil.id}>
+                        {perfil.nome}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
