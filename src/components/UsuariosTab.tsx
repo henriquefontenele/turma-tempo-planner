@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { UserProfile, UserRole, Escola, PerfilAcesso } from '@/types';
-import { Edit, Trash2, Users } from 'lucide-react';
+import { Edit, Trash2, Users, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function UsuariosTab() {
@@ -23,6 +23,7 @@ export function UsuariosTab() {
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const { userProfile } = useAuth();
@@ -95,7 +96,21 @@ export function UsuariosTab() {
     }
   };
 
+  const handleAddUser = () => {
+    setIsCreating(true);
+    setEditingUser({
+      id: '',
+      nome: '',
+      email: '',
+      role: 'secretario',
+      ativo: true,
+      escolaIds: []
+    });
+    setIsDialogOpen(true);
+  };
+
   const handleEditUser = (user: UserProfile) => {
+    setIsCreating(false);
     setEditingUser(user);
     setIsDialogOpen(true);
   };
@@ -103,37 +118,99 @@ export function UsuariosTab() {
   const handleSaveUser = async () => {
     if (!editingUser) return;
 
+    // Validações
+    if (!editingUser.nome.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome do usuário é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editingUser.email.trim()) {
+      toast({
+        title: "Erro",
+        description: "O email do usuário é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validação básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editingUser.email)) {
+      toast({
+        title: "Erro",
+        description: "Email inválido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Filtrar campos undefined para evitar erros do Firestore
-      const updateData: any = {
-        nome: editingUser.nome,
-        role: editingUser.role,
-        ativo: editingUser.ativo,
-      };
+      if (isCreating) {
+        // Verificar se o email já existe
+        const existingUser = usuarios.find(u => u.email === editingUser.email);
+        if (existingUser) {
+          toast({
+            title: "Erro",
+            description: "Já existe um usuário com este email.",
+            variant: "destructive",
+          });
+          return;
+        }
 
-      // Só incluir escolaIds se não for undefined
-      if (editingUser.escolaIds !== undefined) {
-        updateData.escolaIds = editingUser.escolaIds;
+        // Criar novo usuário
+        const userData: any = {
+          nome: editingUser.nome.trim(),
+          email: editingUser.email.trim().toLowerCase(),
+          role: editingUser.role,
+          ativo: editingUser.ativo,
+          escolaIds: editingUser.escolaIds || []
+        };
+
+        const docRef = await addDoc(collection(db, 'users'), userData);
+        const newUser = { ...userData, id: docRef.id };
+        setUsuarios([...usuarios, newUser]);
+
+        toast({
+          title: "Sucesso",
+          description: "Usuário criado com sucesso.",
+        });
+      } else {
+        // Atualizar usuário existente
+        const updateData: any = {
+          nome: editingUser.nome.trim(),
+          role: editingUser.role,
+          ativo: editingUser.ativo,
+        };
+
+        // Só incluir escolaIds se não for undefined
+        if (editingUser.escolaIds !== undefined) {
+          updateData.escolaIds = editingUser.escolaIds;
+        }
+
+        await updateDoc(doc(db, 'users', editingUser.id), updateData);
+
+        setUsuarios(usuarios.map(u => 
+          u.id === editingUser.id ? editingUser : u
+        ));
+
+        toast({
+          title: "Sucesso",
+          description: "Usuário atualizado com sucesso.",
+        });
       }
-
-      await updateDoc(doc(db, 'users', editingUser.id), updateData);
-
-      setUsuarios(usuarios.map(u => 
-        u.id === editingUser.id ? editingUser : u
-      ));
 
       setIsDialogOpen(false);
       setEditingUser(null);
-
-      toast({
-        title: "Sucesso",
-        description: "Usuário atualizado com sucesso.",
-      });
+      setIsCreating(false);
     } catch (error) {
-      console.error('Erro ao atualizar usuário:', error);
+      console.error('Erro ao salvar usuário:', error);
       toast({
         title: "Erro",
-        description: "Erro ao atualizar usuário.",
+        description: `Erro ao ${isCreating ? 'criar' : 'atualizar'} usuário.`,
         variant: "destructive",
       });
     }
@@ -223,6 +300,10 @@ export function UsuariosTab() {
                 Usuários ativos no sistema
               </CardDescription>
             </div>
+            <Button onClick={handleAddUser}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Adicionar Usuário
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -319,12 +400,18 @@ export function UsuariosTab() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setEditingUser(null);
+          setIsCreating(false);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogTitle>{isCreating ? 'Adicionar Usuário' : 'Editar Usuário'}</DialogTitle>
             <DialogDescription>
-              Altere as informações e permissões do usuário.
+              {isCreating ? 'Preencha os dados do novo usuário.' : 'Altere as informações e permissões do usuário.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -346,9 +433,15 @@ export function UsuariosTab() {
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  type="email"
                   value={editingUser.email}
-                  disabled
-                  className="bg-gray-50"
+                  onChange={(e) => setEditingUser({
+                    ...editingUser,
+                    email: e.target.value
+                  })}
+                  disabled={!isCreating}
+                  className={!isCreating ? "bg-gray-50" : ""}
+                  placeholder="usuario@email.com"
                 />
               </div>
 
