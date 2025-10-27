@@ -41,13 +41,39 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadUserProfile = async (user: User) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
-        setUserProfile(userDoc.data() as UserProfile);
+        const profile = userDoc.data() as UserProfile;
+        setUserProfile(profile);
+        
+        // Buscar permissões do perfil de acesso
+        if (profile.role) {
+          const perfilDoc = await getDoc(doc(db, 'perfis-acesso', profile.role));
+          if (perfilDoc.exists()) {
+            const perfilData = perfilDoc.data();
+            // Combinar permissões diretas e herdadas
+            const allPermissions = new Set<string>([
+              ...(perfilData.permissoes || []),
+              ...(perfilData.permissoesHerdadas || [])
+            ]);
+            setUserPermissions(Array.from(allPermissions));
+          } else {
+            // Fallback para permissões padrão se o perfil não existir
+            const defaultPermissions: Record<UserRole, string[]> = {
+              administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio', 'usuarios', 'perfis'],
+              diretor: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio'],
+              coordenador: ['disciplinas', 'turmas', 'gerador', 'horarios', 'professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
+              secretario: ['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
+              professor: ['academico', 'notas', 'relatorio']
+            };
+            setUserPermissions(defaultPermissions[profile.role] || []);
+          }
+        }
       } else {
         // Criar perfil padrão para novo usuário
         const defaultProfile: UserProfile = {
@@ -59,6 +85,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         };
         await setDoc(doc(db, 'users', user.uid), defaultProfile);
         setUserProfile(defaultProfile);
+        setUserPermissions(['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio']);
       }
     } catch (error) {
       console.error('Erro ao carregar perfil do usuário:', error);
@@ -72,6 +99,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         await loadUserProfile(user);
       } else {
         setUserProfile(null);
+        setUserPermissions([]);
       }
       setLoading(false);
     });
@@ -98,16 +126,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const hasAccess = (menuId: string): boolean => {
     if (!userProfile) return false;
-    
-    const rolePermissions: Record<UserRole, string[]> = {
-      administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio', 'usuarios', 'perfis'],
-      diretor: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio'],
-      coordenador: ['disciplinas', 'turmas', 'gerador', 'horarios', 'professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
-      secretario: ['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
-      professor: ['academico', 'notas', 'relatorio']
-    };
-    
-    return rolePermissions[userProfile.role]?.includes(menuId) || false;
+    return userPermissions.includes(menuId);
   };
 
   const value = {
