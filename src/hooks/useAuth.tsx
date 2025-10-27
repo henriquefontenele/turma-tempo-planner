@@ -50,10 +50,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (userDoc.exists()) {
         const profile = userDoc.data() as UserProfile;
         setUserProfile(profile);
+
+        // Normaliza o role para garantir correspondência correta
+        const roleRaw = String(profile.role || '').trim().toLowerCase();
+        const roleMap: Record<string, UserRole> = {
+          administrador: 'administrador',
+          diretor: 'diretor',
+          coordenador: 'coordenador',
+          secretario: 'secretario',
+          professor: 'professor',
+          admin: 'administrador',
+          diretora: 'diretor',
+          coordenadora: 'coordenador',
+          secretaria: 'secretario',
+          docente: 'professor',
+          teacher: 'professor',
+        };
+        const roleKey: UserRole = roleMap[roleRaw] || 'secretario';
         
         // Buscar permissões do perfil de acesso
-        if (profile.role) {
-          const perfilDoc = await getDoc(doc(db, 'perfis-acesso', profile.role));
+        if (roleKey) {
+          const perfilDoc = await getDoc(doc(db, 'perfis-acesso', roleKey));
           if (perfilDoc.exists()) {
             const perfilData = perfilDoc.data();
             // Normalizar permissões vindas do Firestore para os IDs de menu
@@ -199,7 +216,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 ],
                 professor: ['academico', 'notas', 'relatorio'],
               };
-              setUserPermissions(defaultPermissions[profile.role] || []);
+              setUserPermissions(defaultPermissions[roleKey] || []);
             }
           } else {
             // Fallback para permissões padrão se o perfil não existir
@@ -210,7 +227,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               secretario: ['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
               professor: ['academico', 'notas', 'relatorio']
             };
-            setUserPermissions(defaultPermissions[profile.role] || []);
+            setUserPermissions(defaultPermissions[roleKey] || []);
           }
         }
       } else {
