@@ -56,12 +56,151 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           const perfilDoc = await getDoc(doc(db, 'perfis-acesso', profile.role));
           if (perfilDoc.exists()) {
             const perfilData = perfilDoc.data();
-            // Combinar permissões diretas e herdadas
-            const allPermissions = new Set<string>([
+            // Normalizar permissões vindas do Firestore para os IDs de menu
+            const knownItems = [
+              { id: 'disciplinas', label: 'Disciplinas' },
+              { id: 'professores', label: 'Professores' },
+              { id: 'turmas', label: 'Turmas' },
+              { id: 'escolas', label: 'Escolas' },
+              { id: 'config', label: 'Turnos' },
+              { id: 'usuarios', label: 'Usuários' },
+              { id: 'perfis', label: 'Perfis de Acesso' },
+              { id: 'alunos', label: 'Alunos' },
+              { id: 'matricula', label: 'Matrícula' },
+              { id: 'gerador', label: 'Gerador' },
+              { id: 'horarios', label: 'Horários' },
+              { id: 'academico', label: 'Frequência' },
+              { id: 'notas', label: 'Notas' },
+              { id: 'relatorio', label: 'Relatório' },
+            ];
+
+            const normalize = (val: string): string | null => {
+              if (!val) return null;
+              const slug = String(val)
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+
+              // match direto por id
+              if (knownItems.some((k) => k.id === slug)) return slug;
+
+              // match por label normalizado
+              const byLabel = knownItems.find(
+                (k) =>
+                  k.label
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '') === slug
+              );
+              if (byLabel) return byLabel.id;
+
+              // sinônimos comuns / plural-singular
+              const synonyms: Record<string, string> = {
+                frequencia: 'academico',
+                relatorios: 'relatorio',
+                relatorio: 'relatorio',
+                turno: 'config',
+                turnos: 'config',
+                configuracao: 'config',
+                configuracoes: 'config',
+                horario: 'horarios',
+                horarios: 'horarios',
+                aluno: 'alunos',
+                alunos: 'alunos',
+                matriculas: 'matricula',
+                professor: 'professores',
+                professores: 'professores',
+                turma: 'turmas',
+                turmas: 'turmas',
+                disciplina: 'disciplinas',
+                disciplinas: 'disciplinas',
+                escola: 'escolas',
+                escolas: 'escolas',
+                usuario: 'usuarios',
+                usuarios: 'usuarios',
+                perfil: 'perfis',
+                perfis: 'perfis',
+                nota: 'notas',
+                notas: 'notas',
+                geradores: 'gerador',
+              };
+
+              return synonyms[slug] || null;
+            };
+
+            const rawPerms: string[] = [
               ...(perfilData.permissoes || []),
-              ...(perfilData.permissoesHerdadas || [])
-            ]);
-            setUserPermissions(Array.from(allPermissions));
+              ...(perfilData.permissoesHerdadas || []),
+            ].map((p: any) => String(p));
+
+            const normalized = Array.from(
+              new Set(
+                rawPerms
+                  .map((p) => normalize(p))
+                  .filter(Boolean) as string[]
+              )
+            );
+
+            if (normalized.length > 0) {
+              setUserPermissions(normalized);
+            } else {
+              // Fallback para permissões padrão se nada corresponder
+              const defaultPermissions: Record<UserRole, string[]> = {
+                administrador: [
+                  'disciplinas',
+                  'professores',
+                  'turmas',
+                  'escolas',
+                  'config',
+                  'alunos',
+                  'matricula',
+                  'gerador',
+                  'horarios',
+                  'academico',
+                  'notas',
+                  'relatorio',
+                  'usuarios',
+                  'perfis',
+                ],
+                diretor: [
+                  'disciplinas',
+                  'professores',
+                  'turmas',
+                  'escolas',
+                  'config',
+                  'alunos',
+                  'matricula',
+                  'gerador',
+                  'horarios',
+                  'academico',
+                  'notas',
+                  'relatorio',
+                ],
+                coordenador: [
+                  'disciplinas',
+                  'turmas',
+                  'gerador',
+                  'horarios',
+                  'professores',
+                  'matricula',
+                  'alunos',
+                  'academico',
+                  'notas',
+                  'relatorio',
+                ],
+                secretario: [
+                  'professores',
+                  'matricula',
+                  'alunos',
+                  'academico',
+                  'notas',
+                  'relatorio',
+                ],
+                professor: ['academico', 'notas', 'relatorio'],
+              };
+              setUserPermissions(defaultPermissions[profile.role] || []);
+            }
           } else {
             // Fallback para permissões padrão se o perfil não existir
             const defaultPermissions: Record<UserRole, string[]> = {
