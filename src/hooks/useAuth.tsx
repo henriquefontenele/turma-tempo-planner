@@ -99,24 +99,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               { id: 'relatorio', label: 'Relatório' },
             ];
 
+            const groupMap: Record<string, string[]> = {
+              cadastro: ['disciplinas','professores','turmas','escolas','config'],
+              usuarios: ['usuarios','perfis'],
+              matricula: ['alunos','matricula'],
+              horario: ['gerador','horarios'],
+              academico: ['academico','notas','relatorio'],
+            };
+
+            const allIds = knownItems.map((k) => k.id);
+
+            const slugify = (val: string) => String(val)
+              .trim()
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
+
+            // Normaliza item individual para id de menu
             const normalize = (val: string): string | null => {
               if (!val) return null;
-              const slug = String(val)
-                .trim()
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '');
+              const slug = slugify(val);
 
               // match direto por id
               if (knownItems.some((k) => k.id === slug)) return slug;
 
               // match por label normalizado
               const byLabel = knownItems.find(
-                (k) =>
-                  k.label
-                    .toLowerCase()
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '') === slug
+                (k) => slugify(k.label) === slug
               );
               if (byLabel) return byLabel.id;
 
@@ -154,20 +163,110 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               return synonyms[slug] || null;
             };
 
-            const rawPerms: string[] = [
-              ...(perfilData.permissoes || []),
-              ...(perfilData.permissoesHerdadas || []),
-            ].map((p: any) => String(p));
+            // Normaliza nome de grupo para lista de ids
+            const normalizeGroup = (val: string): string[] | null => {
+              const s = slugify(val);
+              const groupSyn: Record<string, string> = {
+                cadastro: 'cadastro',
+                usuarios: 'usuarios',
+                usuario: 'usuarios',
+                matricula: 'matricula',
+                matriculas: 'matricula',
+                horario: 'horario',
+                horarios: 'horario',
+                'horario-grupo': 'horario',
+                'horarios-grupo': 'horario',
+                'usuarios-grupo': 'usuarios',
+                'cadastro-grupo': 'cadastro',
+                'matricula-grupo': 'matricula',
+                'academico-grupo': 'academico',
+                academicos: 'academico',
+              };
+              const key = groupMap[s] ? s : groupSyn[s];
+              return key && groupMap[key] ? groupMap[key] : null;
+            };
 
-            console.log('📝 Permissões brutas:', rawPerms);
+            // Converte diferentes formatos (array, objeto, string) em lista de tokens
+            const collectFrom = (input: any): string[] => {
+              if (!input) return [];
+              if (Array.isArray(input)) return input.map(String);
+              if (typeof input === 'string')
+                return input.split(/[;,]+/).map((s) => s.trim()).filter(Boolean);
+              if (typeof input === 'object')
+                return Object.entries(input)
+                  .filter(([, v]) => Boolean(v))
+                  .map(([k]) => String(k));
+              return [];
+            };
 
-            const normalized = Array.from(
-              new Set(
-                rawPerms
-                  .map((p) => normalize(p))
-                  .filter(Boolean) as string[]
-              )
-            );
+            // Coleta permissões (arrays, objetos com booleans ou strings) e grupos
+            let rawPerms: string[] = [
+              ...collectFrom(perfilData.permissoes),
+              ...collectFrom(perfilData.permissoesHerdadas),
+              ...collectFrom(perfilData.menus),
+              ...collectFrom(perfilData.acessos),
+              ...collectFrom(perfilData.items),
+              ...collectFrom(perfilData.itens),
+            ];
+
+            const rawGroups: string[] = [
+              ...collectFrom(perfilData.grupos),
+              ...collectFrom(perfilData.groups),
+              ...collectFrom(perfilData.gruposAcesso),
+            ];
+
+            // Herança de outros perfis (se houver)
+            const inherits = collectFrom(perfilData.herdaDe || perfilData.inherit || perfilData.inherits);
+            if (inherits.length) {
+              try {
+                const inheritedDocs = await Promise.all(
+                  inherits.map((r) => {
+                    const rk = (roleMap as any)[slugify(r)] as UserRole | undefined;
+                    return rk ? getDoc(doc(db, 'perfis-acesso', rk)) : Promise.resolve(null);
+                  })
+                );
+                inheritedDocs.forEach((d) => {
+                  if (d && d.exists()) {
+                    const p: any = d.data();
+                    rawPerms.push(
+                      ...collectFrom(p.permissoes),
+                      ...collectFrom(p.permissoesHerdadas)
+                    );
+                    rawGroups.push(
+                      ...collectFrom(p.grupos),
+                      ...collectFrom(p.groups)
+                    );
+                  }
+                });
+              } catch (e) {
+                console.warn('⚠️ Erro ao carregar perfis herdados:', e);
+              }
+            }
+
+            console.log('📝 Permissões brutas:', rawPerms, '| grupos:', rawGroups);
+
+            // Expande tokens para ids finais
+            const expanded = new Set<string>();
+            const addMany = (arr: string[]) => arr.forEach((id) => expanded.add(id));
+
+            const starTokens = new Set(['*', 'all', 'tudo', 'todos']);
+            rawPerms.forEach((t) => {
+              const s = slugify(String(t));
+              if (starTokens.has(s)) {
+                addMany(allIds);
+                return;
+              }
+              const id = normalize(t);
+              if (id) expanded.add(id);
+            });
+
+            rawGroups.forEach((g) => {
+              const ids = normalizeGroup(g);
+              if (ids) addMany(ids);
+            });
+
+            const normalized = Array.from(expanded);
+
 
             console.log('✅ Permissões normalizadas:', normalized);
 
