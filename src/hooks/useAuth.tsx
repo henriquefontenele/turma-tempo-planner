@@ -73,6 +73,43 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const roleKey: UserRole = roleMap[roleRaw] || 'secretario';
         console.log('🔑 Role key final:', roleKey);
         
+        // Converte diferentes formatos (array, objeto, string) em lista de tokens
+        const collectFrom = (input: any): string[] => {
+          if (!input) return [];
+          if (Array.isArray(input)) return input.map(String);
+          if (typeof input === 'string')
+            return input.split(/[;,]+/).map((s) => s.trim()).filter(Boolean);
+          if (typeof input === 'object')
+            return Object.entries(input)
+              .filter(([, v]) => Boolean(v))
+              .map(([k]) => String(k));
+          return [];
+        };
+
+        // Função recursiva para buscar permissões herdadas
+        const getPermissoesHerdadas = async (perfilId: string, visited: Set<string> = new Set()): Promise<any[]> => {
+          if (visited.has(perfilId)) {
+            console.warn('⚠️ Ciclo detectado na herança de perfis:', perfilId);
+            return [];
+          }
+          visited.add(perfilId);
+
+          const perfilDoc = await getDoc(doc(db, 'perfis-acesso', perfilId));
+          if (!perfilDoc.exists()) return [];
+
+          const perfilData = perfilDoc.data();
+          const permissoes = [...collectFrom(perfilData.permissoes)];
+
+          // Se este perfil herda de outro, buscar as permissões do pai
+          if (perfilData.herdarDe) {
+            console.log(`🔗 Perfil ${perfilId} herda de: ${perfilData.herdarDe}`);
+            const permissoesHerdadas = await getPermissoesHerdadas(perfilData.herdarDe, visited);
+            permissoes.push(...permissoesHerdadas);
+          }
+
+          return permissoes;
+        };
+
         // Buscar permissões do perfil de acesso
         if (roleKey) {
           console.log('📂 Buscando perfil de acesso:', `perfis-acesso/${roleKey}`);
@@ -186,21 +223,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               return key && groupMap[key] ? groupMap[key] : null;
             };
 
-            // Converte diferentes formatos (array, objeto, string) em lista de tokens
-            const collectFrom = (input: any): string[] => {
-              if (!input) return [];
-              if (Array.isArray(input)) return input.map(String);
-              if (typeof input === 'string')
-                return input.split(/[;,]+/).map((s) => s.trim()).filter(Boolean);
-              if (typeof input === 'object')
-                return Object.entries(input)
-                  .filter(([, v]) => Boolean(v))
-                  .map(([k]) => String(k));
-              return [];
-            };
+            // Buscar permissões herdadas recursivamente
+            let permissoesHerdadas: string[] = [];
+            if (perfilData.herdarDe) {
+              console.log('🔗 Processando herança de:', perfilData.herdarDe);
+              permissoesHerdadas = await getPermissoesHerdadas(perfilData.herdarDe);
+              console.log('📥 Permissões herdadas:', permissoesHerdadas);
+            }
 
             // Coleta permissões (arrays, objetos com booleans ou strings) e grupos
             let rawPerms: string[] = [
+              ...permissoesHerdadas, // Adiciona permissões herdadas primeiro
               ...collectFrom(perfilData.permissoes),
               ...collectFrom(perfilData.permissoesHerdadas),
               ...collectFrom(perfilData.menus),
