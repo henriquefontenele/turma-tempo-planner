@@ -86,28 +86,65 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           return [];
         };
 
-        // Função recursiva para buscar permissões herdadas
-        const getPermissoesHerdadas = async (perfilId: string, visited: Set<string> = new Set()): Promise<any[]> => {
-          if (visited.has(perfilId)) {
-            console.warn('⚠️ Ciclo detectado na herança de perfis:', perfilId);
-            return [];
+        // Função recursiva para buscar permissões e grupos herdados (suporta string ou array)
+        const getPermissoesHerdadas = async (
+          perfilIdInput: string | string[],
+          visited: Set<string> = new Set()
+        ): Promise<{ perms: string[]; groups: string[] }> => {
+          const result = { perms: [] as string[], groups: [] as string[] };
+
+          const merge = (a: string[], b: string[]) => {
+            for (const v of b) if (v) a.push(String(v));
+          };
+
+          const handleSingle = async (perfilId: string) => {
+            if (!perfilId) return;
+            if (visited.has(perfilId)) {
+              console.warn('⚠️ Ciclo detectado na herança de perfis:', perfilId);
+              return;
+            }
+            visited.add(perfilId);
+
+            const perfilDoc = await getDoc(doc(db, 'perfis-acesso', perfilId));
+            if (!perfilDoc.exists()) return;
+
+            const perfilData: any = perfilDoc.data();
+
+            // Coleta permissões e grupos deste perfil
+            merge(result.perms, collectFrom(perfilData.permissoes));
+            merge(result.perms, collectFrom(perfilData.permissoesHerdadas));
+            merge(result.perms, collectFrom(perfilData.menus));
+            merge(result.perms, collectFrom(perfilData.acessos));
+            merge(result.perms, collectFrom(perfilData.items));
+            merge(result.perms, collectFrom(perfilData.itens));
+
+            merge(result.groups, collectFrom(perfilData.grupos));
+            merge(result.groups, collectFrom(perfilData.groups));
+            merge(result.groups, collectFrom(perfilData.gruposAcesso));
+
+            // Heranças em cadeia
+            const nextParents = perfilData.herdarDe || perfilData.herdaDe || perfilData.inherit || perfilData.inherits;
+            if (nextParents) {
+              console.log(`🔗 Perfil ${perfilId} herda de:`, nextParents);
+              const nested = await getPermissoesHerdadas(nextParents, visited);
+              merge(result.perms, nested.perms);
+              merge(result.groups, nested.groups);
+            }
+          };
+
+          if (Array.isArray(perfilIdInput)) {
+            for (const pid of perfilIdInput) {
+              await handleSingle(String(pid));
+            }
+          } else {
+            await handleSingle(String(perfilIdInput));
           }
-          visited.add(perfilId);
 
-          const perfilDoc = await getDoc(doc(db, 'perfis-acesso', perfilId));
-          if (!perfilDoc.exists()) return [];
-
-          const perfilData = perfilDoc.data();
-          const permissoes = [...collectFrom(perfilData.permissoes)];
-
-          // Se este perfil herda de outro, buscar as permissões do pai
-          if (perfilData.herdarDe) {
-            console.log(`🔗 Perfil ${perfilId} herda de: ${perfilData.herdarDe}`);
-            const permissoesHerdadas = await getPermissoesHerdadas(perfilData.herdarDe, visited);
-            permissoes.push(...permissoesHerdadas);
-          }
-
-          return permissoes;
+          // Retorna únicos
+          return {
+            perms: Array.from(new Set(result.perms)),
+            groups: Array.from(new Set(result.groups)),
+          };
         };
 
         // Buscar permissões do perfil de acesso
@@ -223,17 +260,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               return key && groupMap[key] ? groupMap[key] : null;
             };
 
-            // Buscar permissões herdadas recursivamente
-            let permissoesHerdadas: string[] = [];
+            // Buscar permissões herdadas recursivamente (perms e groups)
+            let inherited = { perms: [] as string[], groups: [] as string[] };
             if (perfilData.herdarDe) {
               console.log('🔗 Processando herança de:', perfilData.herdarDe);
-              permissoesHerdadas = await getPermissoesHerdadas(perfilData.herdarDe);
-              console.log('📥 Permissões herdadas:', permissoesHerdadas);
+              inherited = await getPermissoesHerdadas(perfilData.herdarDe);
+              console.log('📥 Permissões herdadas:', inherited);
             }
 
             // Coleta permissões (arrays, objetos com booleans ou strings) e grupos
             let rawPerms: string[] = [
-              ...permissoesHerdadas, // Adiciona permissões herdadas primeiro
+              ...inherited.perms, // Adiciona permissões herdadas primeiro
               ...collectFrom(perfilData.permissoes),
               ...collectFrom(perfilData.permissoesHerdadas),
               ...collectFrom(perfilData.menus),
@@ -243,6 +280,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             ];
 
             const rawGroups: string[] = [
+              ...inherited.groups, // Grupos herdados primeiro
               ...collectFrom(perfilData.grupos),
               ...collectFrom(perfilData.groups),
               ...collectFrom(perfilData.gruposAcesso),
@@ -253,21 +291,40 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (inherits.length) {
               try {
                 const inheritedDocs = await Promise.all(
-                  inherits.map((r) => {
-                    const rk = (roleMap as any)[slugify(r)] as UserRole | undefined;
-                    return rk ? getDoc(doc(db, 'perfis-acesso', rk)) : Promise.resolve(null);
+                  inherits.map(async (r) => {
+                    const rStr = String(r);
+                    const slug = slugify(rStr);
+                    const candidates = [
+                      (roleMap as any)[slug] as string | undefined,
+                      slug,
+                      rStr,
+                    ].filter(Boolean) as string[];
+
+                    for (const id of candidates) {
+                      try {
+                        const d = await getDoc(doc(db, 'perfis-acesso', id));
+                        if (d.exists()) return d;
+                      } catch {}
+                    }
+                    return null;
                   })
                 );
+
                 inheritedDocs.forEach((d) => {
                   if (d && d.exists()) {
                     const p: any = d.data();
                     rawPerms.push(
                       ...collectFrom(p.permissoes),
-                      ...collectFrom(p.permissoesHerdadas)
+                      ...collectFrom(p.permissoesHerdadas),
+                      ...collectFrom(p.menus),
+                      ...collectFrom(p.acessos),
+                      ...collectFrom(p.items),
+                      ...collectFrom(p.itens)
                     );
                     rawGroups.push(
                       ...collectFrom(p.grupos),
-                      ...collectFrom(p.groups)
+                      ...collectFrom(p.groups),
+                      ...collectFrom(p.gruposAcesso)
                     );
                   }
                 });
