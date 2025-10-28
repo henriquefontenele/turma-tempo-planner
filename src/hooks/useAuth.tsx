@@ -46,13 +46,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const loadUserProfile = async (user: User) => {
     try {
+      console.log('🔍 Carregando perfil do usuário:', user.uid);
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const profile = userDoc.data() as UserProfile;
         setUserProfile(profile);
+        console.log('👤 Perfil do usuário:', profile);
 
         // Normaliza o role para garantir correspondência correta
         const roleRaw = String(profile.role || '').trim().toLowerCase();
+        console.log('🎭 Role bruto:', profile.role, '-> normalizado:', roleRaw);
+        
         const roleMap: Record<string, UserRole> = {
           administrador: 'administrador',
           diretor: 'diretor',
@@ -67,12 +71,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           teacher: 'professor',
         };
         const roleKey: UserRole = roleMap[roleRaw] || 'secretario';
+        console.log('🔑 Role key final:', roleKey);
         
         // Buscar permissões do perfil de acesso
         if (roleKey) {
+          console.log('📂 Buscando perfil de acesso:', `perfis-acesso/${roleKey}`);
           const perfilDoc = await getDoc(doc(db, 'perfis-acesso', roleKey));
           if (perfilDoc.exists()) {
             const perfilData = perfilDoc.data();
+            console.log('📋 Dados do perfil de acesso:', perfilData);
+            
             // Normalizar permissões vindas do Firestore para os IDs de menu
             const knownItems = [
               { id: 'disciplinas', label: 'Disciplinas' },
@@ -151,6 +159,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               ...(perfilData.permissoesHerdadas || []),
             ].map((p: any) => String(p));
 
+            console.log('📝 Permissões brutas:', rawPerms);
+
             const normalized = Array.from(
               new Set(
                 rawPerms
@@ -159,9 +169,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               )
             );
 
+            console.log('✅ Permissões normalizadas:', normalized);
+
             if (normalized.length > 0) {
               setUserPermissions(normalized);
+              console.log('✓ Permissões definidas:', normalized);
             } else {
+              console.log('⚠️ Nenhuma permissão normalizada, usando fallback');
+
               // Fallback para permissões padrão se nada corresponder
               const defaultPermissions: Record<UserRole, string[]> = {
                 administrador: [
@@ -217,8 +232,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 professor: ['academico', 'notas', 'relatorio'],
               };
               setUserPermissions(defaultPermissions[roleKey] || []);
+              console.log('✓ Permissões fallback definidas:', defaultPermissions[roleKey]);
             }
           } else {
+            console.log('⚠️ Perfil de acesso não encontrado, usando fallback');
             // Fallback para permissões padrão se o perfil não existir
             const defaultPermissions: Record<UserRole, string[]> = {
               administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio', 'usuarios', 'perfis'],
@@ -228,9 +245,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               professor: ['academico', 'notas', 'relatorio']
             };
             setUserPermissions(defaultPermissions[roleKey] || []);
+            console.log('✓ Permissões fallback definidas:', defaultPermissions[roleKey]);
           }
         }
       } else {
+        console.log('⚠️ Usuário não encontrado, criando perfil padrão');
+
         // Criar perfil padrão para novo usuário
         const defaultProfile: UserProfile = {
           id: user.uid,
