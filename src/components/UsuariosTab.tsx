@@ -469,32 +469,45 @@ export function UsuariosTab() {
 
               <div>
                 <Label>Escolas Associadas</Label>
-                <div className="grid grid-cols-1 gap-2 mt-2 max-h-32 overflow-y-auto border rounded p-2">
-                  {escolas.map((escola) => (
-                    <div key={escola.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`escola-${escola.id}`}
-                        checked={editingUser.escolaIds?.includes(escola.id) || false}
-                        onCheckedChange={(checked) => {
-                          const currentEscolas = editingUser.escolaIds || [];
-                          if (checked) {
-                            setEditingUser({
-                              ...editingUser,
-                              escolaIds: [...currentEscolas, escola.id]
-                            });
-                          } else {
-                            setEditingUser({
-                              ...editingUser,
-                              escolaIds: currentEscolas.filter(id => id !== escola.id)
-                            });
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`escola-${escola.id}`} className="text-sm">{escola.nome}</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Selecione as escolas que este usuário pode acessar
+                </p>
+                <div className="grid grid-cols-1 gap-2 mt-2 max-h-32 overflow-y-auto border rounded p-2 bg-gray-50">
+                  {escolas.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        📚 Nenhuma escola cadastrada
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Cadastre escolas primeiro na aba "Escolas" antes de criar usuários
+                      </p>
                     </div>
-                  ))}
-                  {escolas.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Nenhuma escola cadastrada</p>
+                  ) : (
+                    escolas.map((escola) => (
+                      <div key={escola.id} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded">
+                        <Checkbox
+                          id={`escola-${escola.id}`}
+                          checked={editingUser.escolaIds?.includes(escola.id) || false}
+                          onCheckedChange={(checked) => {
+                            const currentEscolas = editingUser.escolaIds || [];
+                            if (checked) {
+                              setEditingUser({
+                                ...editingUser,
+                                escolaIds: [...currentEscolas, escola.id]
+                              });
+                            } else {
+                              setEditingUser({
+                                ...editingUser,
+                                escolaIds: currentEscolas.filter(id => id !== escola.id)
+                              });
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`escola-${escola.id}`} className="text-sm cursor-pointer flex-1">
+                          {escola.nome}
+                        </Label>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
