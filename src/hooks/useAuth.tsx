@@ -10,7 +10,7 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { UserProfile, UserRole } from '@/types';
 
 interface AuthContextType {
@@ -53,9 +53,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUserProfile(profile);
         console.log('👤 Perfil do usuário:', profile);
 
-        // Normaliza o role para garantir correspondência correta
-        const roleRaw = String(profile.role || '').trim().toLowerCase();
-        console.log('🎭 Role bruto:', profile.role, '-> normalizado:', roleRaw);
+        // Normaliza o role para garantir correspondência correta (mantendo suporte a perfis customizados por ID)
+        const roleRaw = String(profile.role || '').trim();
+        const roleLower = roleRaw.toLowerCase();
+        console.log('🎭 Valor de role no perfil:', profile.role, '-> lower:', roleLower);
         
         const roleMap: Record<string, UserRole> = {
           administrador: 'administrador',
@@ -70,8 +71,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           docente: 'professor',
           teacher: 'professor',
         };
-        const roleKey: UserRole = roleMap[roleRaw] || 'secretario';
-        console.log('🔑 Role key final:', roleKey);
+        // Se o valor de role for um nome conhecido, usamos como fallback; caso contrário, ele pode ser o ID de um documento em perfis-acesso
+        const roleKey: UserRole | null = roleMap[roleLower] || null;
+        console.log('🔑 Role key (legado) para fallback:', roleKey);
         
         // Converte diferentes formatos (array, objeto, string) em lista de tokens
         const collectFrom = (input: any): string[] => {
@@ -147,295 +149,131 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           };
         };
 
-        // Buscar permissões do perfil de acesso
-        if (roleKey) {
-          console.log('📂 Buscando perfil de acesso:', `perfis-acesso/${roleKey}`);
-          const perfilDoc = await getDoc(doc(db, 'perfis-acesso', roleKey));
-          if (perfilDoc.exists()) {
-            const perfilData = perfilDoc.data();
-            console.log('📋 Dados do perfil de acesso:', perfilData);
-            
-            // Normalizar permissões vindas do Firestore para os IDs de menu
-            const knownItems = [
-              { id: 'disciplinas', label: 'Disciplinas' },
-              { id: 'professores', label: 'Professores' },
-              { id: 'turmas', label: 'Turmas' },
-              { id: 'escolas', label: 'Escolas' },
-              { id: 'config', label: 'Turnos' },
-              { id: 'usuarios', label: 'Usuários' },
-              { id: 'perfis', label: 'Perfis de Acesso' },
-              { id: 'alunos', label: 'Alunos' },
-              { id: 'matricula', label: 'Matrícula' },
-              { id: 'gerador', label: 'Gerador' },
-              { id: 'horarios', label: 'Horários' },
-              { id: 'academico', label: 'Frequência' },
-              { id: 'notas', label: 'Notas' },
-              { id: 'relatorio', label: 'Relatório' },
-            ];
-
-            const groupMap: Record<string, string[]> = {
-              cadastro: ['disciplinas','professores','turmas','escolas','config'],
-              usuarios: ['usuarios','perfis'],
-              matricula: ['alunos','matricula'],
-              horario: ['gerador','horarios'],
-              academico: ['academico','notas','relatorio'],
-            };
-
-            const allIds = knownItems.map((k) => k.id);
-
-            const slugify = (val: string) => String(val)
-              .trim()
-              .toLowerCase()
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '');
-
-            // Normaliza item individual para id de menu
-            const normalize = (val: string): string | null => {
-              if (!val) return null;
-              const slug = slugify(val);
-
-              // match direto por id
-              if (knownItems.some((k) => k.id === slug)) return slug;
-
-              // match por label normalizado
-              const byLabel = knownItems.find(
-                (k) => slugify(k.label) === slug
-              );
-              if (byLabel) return byLabel.id;
-
-              // sinônimos comuns / plural-singular
-              const synonyms: Record<string, string> = {
-                frequencia: 'academico',
-                relatorios: 'relatorio',
-                relatorio: 'relatorio',
-                turno: 'config',
-                turnos: 'config',
-                configuracao: 'config',
-                configuracoes: 'config',
-                horario: 'horarios',
-                horarios: 'horarios',
-                aluno: 'alunos',
-                alunos: 'alunos',
-                matriculas: 'matricula',
-                professor: 'professores',
-                professores: 'professores',
-                turma: 'turmas',
-                turmas: 'turmas',
-                disciplina: 'disciplinas',
-                disciplinas: 'disciplinas',
-                escola: 'escolas',
-                escolas: 'escolas',
-                usuario: 'usuarios',
-                usuarios: 'usuarios',
-                perfil: 'perfis',
-                perfis: 'perfis',
-                nota: 'notas',
-                notas: 'notas',
-                geradores: 'gerador',
-              };
-
-              return synonyms[slug] || null;
-            };
-
-            // Normaliza nome de grupo para lista de ids
-            const normalizeGroup = (val: string): string[] | null => {
-              const s = slugify(val);
-              const groupSyn: Record<string, string> = {
-                cadastro: 'cadastro',
-                usuarios: 'usuarios',
-                usuario: 'usuarios',
-                matricula: 'matricula',
-                matriculas: 'matricula',
-                horario: 'horario',
-                horarios: 'horario',
-                'horario-grupo': 'horario',
-                'horarios-grupo': 'horario',
-                'usuarios-grupo': 'usuarios',
-                'cadastro-grupo': 'cadastro',
-                'matricula-grupo': 'matricula',
-                'academico-grupo': 'academico',
-                academicos: 'academico',
-              };
-              const key = groupMap[s] ? s : groupSyn[s];
-              return key && groupMap[key] ? groupMap[key] : null;
-            };
-
-            // Buscar permissões herdadas recursivamente (perms e groups)
-            let inherited = { perms: [] as string[], groups: [] as string[] };
-            if (perfilData.herdarDe) {
-              console.log('🔗 Processando herança de:', perfilData.herdarDe);
-              inherited = await getPermissoesHerdadas(perfilData.herdarDe);
-              console.log('📥 Permissões herdadas:', inherited);
-            }
-
-            // Coleta permissões (arrays, objetos com booleans ou strings) e grupos
-            let rawPerms: string[] = [
-              ...inherited.perms, // Adiciona permissões herdadas primeiro
-              ...collectFrom(perfilData.permissoes),
-              ...collectFrom(perfilData.permissoesHerdadas),
-              ...collectFrom(perfilData.menus),
-              ...collectFrom(perfilData.acessos),
-              ...collectFrom(perfilData.items),
-              ...collectFrom(perfilData.itens),
-            ];
-
-            const rawGroups: string[] = [
-              ...inherited.groups, // Grupos herdados primeiro
-              ...collectFrom(perfilData.grupos),
-              ...collectFrom(perfilData.groups),
-              ...collectFrom(perfilData.gruposAcesso),
-            ];
-
-            // Herança de outros perfis (se houver)
-            const inherits = collectFrom(perfilData.herdaDe || perfilData.inherit || perfilData.inherits);
-            if (inherits.length) {
-              try {
-                const inheritedDocs = await Promise.all(
-                  inherits.map(async (r) => {
-                    const rStr = String(r);
-                    const slug = slugify(rStr);
-                    const candidates = [
-                      (roleMap as any)[slug] as string | undefined,
-                      slug,
-                      rStr,
-                    ].filter(Boolean) as string[];
-
-                    for (const id of candidates) {
-                      try {
-                        const d = await getDoc(doc(db, 'perfis-acesso', id));
-                        if (d.exists()) return d;
-                      } catch {}
-                    }
-                    return null;
-                  })
-                );
-
-                inheritedDocs.forEach((d) => {
-                  if (d && d.exists()) {
-                    const p: any = d.data();
-                    rawPerms.push(
-                      ...collectFrom(p.permissoes),
-                      ...collectFrom(p.permissoesHerdadas),
-                      ...collectFrom(p.menus),
-                      ...collectFrom(p.acessos),
-                      ...collectFrom(p.items),
-                      ...collectFrom(p.itens)
-                    );
-                    rawGroups.push(
-                      ...collectFrom(p.grupos),
-                      ...collectFrom(p.groups),
-                      ...collectFrom(p.gruposAcesso)
-                    );
-                  }
-                });
-              } catch (e) {
-                console.warn('⚠️ Erro ao carregar perfis herdados:', e);
-              }
-            }
-
-            console.log('📝 Permissões brutas:', rawPerms, '| grupos:', rawGroups);
-
-            // Expande tokens para ids finais
-            const expanded = new Set<string>();
-            const addMany = (arr: string[]) => arr.forEach((id) => expanded.add(id));
-
-            const starTokens = new Set(['*', 'all', 'tudo', 'todos']);
-            rawPerms.forEach((t) => {
-              const s = slugify(String(t));
-              if (starTokens.has(s)) {
-                addMany(allIds);
-                return;
-              }
-              const id = normalize(t);
-              if (id) expanded.add(id);
-            });
-
-            rawGroups.forEach((g) => {
-              const ids = normalizeGroup(g);
-              if (ids) addMany(ids);
-            });
-
-            const normalized = Array.from(expanded);
-
-
-            console.log('✅ Permissões normalizadas:', normalized);
-
-            if (normalized.length > 0) {
-              setUserPermissions(normalized);
-              console.log('✓ Permissões definidas:', normalized);
-            } else {
-              console.log('⚠️ Nenhuma permissão normalizada, usando fallback');
-
-              // Fallback para permissões padrão se nada corresponder
-              const defaultPermissions: Record<UserRole, string[]> = {
-                administrador: [
-                  'disciplinas',
-                  'professores',
-                  'turmas',
-                  'escolas',
-                  'config',
-                  'alunos',
-                  'matricula',
-                  'gerador',
-                  'horarios',
-                  'academico',
-                  'notas',
-                  'relatorio',
-                  'usuarios',
-                  'perfis',
-                ],
-                diretor: [
-                  'disciplinas',
-                  'professores',
-                  'turmas',
-                  'escolas',
-                  'config',
-                  'alunos',
-                  'matricula',
-                  'gerador',
-                  'horarios',
-                  'academico',
-                  'notas',
-                  'relatorio',
-                ],
-                coordenador: [
-                  'disciplinas',
-                  'turmas',
-                  'gerador',
-                  'horarios',
-                  'professores',
-                  'matricula',
-                  'alunos',
-                  'academico',
-                  'notas',
-                  'relatorio',
-                ],
-                secretario: [
-                  'professores',
-                  'matricula',
-                  'alunos',
-                  'academico',
-                  'notas',
-                  'relatorio',
-                ],
-                professor: ['academico', 'notas', 'relatorio'],
-              };
-              setUserPermissions(defaultPermissions[roleKey] || []);
-              console.log('✓ Permissões fallback definidas:', defaultPermissions[roleKey]);
-            }
-          } else {
-            console.log('⚠️ Perfil de acesso não encontrado, usando fallback');
-            // Fallback para permissões padrão se o perfil não existir
-            const defaultPermissions: Record<UserRole, string[]> = {
-              administrador: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio', 'usuarios', 'perfis'],
-              diretor: ['disciplinas', 'professores', 'turmas', 'escolas', 'config', 'alunos', 'matricula', 'gerador', 'horarios', 'academico', 'notas', 'relatorio'],
-              coordenador: ['disciplinas', 'turmas', 'gerador', 'horarios', 'professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
-              secretario: ['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio'],
-              professor: ['academico', 'notas', 'relatorio']
-            };
-            setUserPermissions(defaultPermissions[roleKey] || []);
-            console.log('✓ Permissões fallback definidas:', defaultPermissions[roleKey]);
+        // Buscar perfil de acesso priorizando o ID salvo no usuário; se não existir, tentar pelo role "legado"
+        console.log('📂 Buscando perfil de acesso do usuário:', profile.role);
+        let perfilData: any | null = null;
+        try {
+          const byAssigned = await getDoc(doc(db, 'perfis-acesso', String(profile.role)));
+          if (byAssigned.exists()) {
+            perfilData = byAssigned.data();
+            console.log('✅ Perfil encontrado por ID:', byAssigned.id, perfilData);
           }
+        } catch (e) {
+          console.warn('⚠️ Erro ao buscar perfil por ID:', e);
+        }
+        if (!perfilData && roleKey) {
+          console.log('📂 Tentando perfil de acesso por roleKey (legado):', roleKey);
+          try {
+            const byRoleKey = await getDoc(doc(db, 'perfis-acesso', roleKey));
+            if (byRoleKey.exists()) {
+              perfilData = byRoleKey.data();
+              console.log('✅ Perfil encontrado por roleKey:', roleKey, perfilData);
+            }
+          } catch (e) {
+            console.warn('⚠️ Erro ao buscar perfil por roleKey:', e);
+          }
+        }
+
+        if (perfilData) {
+          console.log('📋 Dados do perfil de acesso:', perfilData);
+
+          // Lista de menus disponíveis no app
+          const allMenuIds = [
+            'disciplinas','professores','turmas','escolas','config',
+            'usuarios','perfis','alunos','matricula','vagas',
+            'gerador','horarios','academico','notas','relatorio'
+          ];
+
+          // Mapeia permissões (do PerfisTab) -> menus
+          const permissionToMenus: Record<string, string[]> = {
+            gerenciar_disciplinas: ['disciplinas'],
+            gerenciar_professores: ['professores'],
+            gerenciar_turmas: ['turmas'],
+            gerenciar_escolas: ['escolas'],
+            configuracoes_sistema: ['config'],
+            gerenciar_usuarios: ['usuarios'],
+            gerenciar_perfis: ['perfis'],
+            gerenciar_alunos: ['alunos'],
+            gerenciar_matriculas: ['matricula'],
+            gerenciar_vagas: ['vagas'],
+            gerar_horarios: ['gerador','horarios'],
+            visualizar_horarios: ['horarios'],
+            gerenciar_academico: ['academico'],
+            registrar_frequencia: ['academico'],
+            visualizar_frequencia: ['academico'],
+            registrar_notas: ['notas'],
+            visualizar_notas: ['notas'],
+            acessar_relatorios: ['relatorio'],
+          };
+
+          // Agregar permissões: próprias + herdadas recursivamente
+          let inherited = { perms: [] as string[], groups: [] as string[] };
+          if (perfilData.herdarDe) {
+            console.log('🔗 Processando herança de:', perfilData.herdarDe);
+            inherited = await getPermissoesHerdadas(perfilData.herdarDe);
+            console.log('📥 Permissões herdadas:', inherited);
+          }
+
+          const collectFrom = (input: any): string[] => {
+            if (!input) return [];
+            if (Array.isArray(input)) return input.map(String);
+            if (typeof input === 'string') return input.split(/[;,]+/).map((s) => s.trim()).filter(Boolean);
+            if (typeof input === 'object') return Object.entries(input).filter(([, v]) => Boolean(v)).map(([k]) => String(k));
+            return [];
+          };
+
+          const rawPerms: string[] = [
+            ...inherited.perms,
+            ...collectFrom(perfilData.permissoes),
+          ];
+
+          console.log('📝 Permissões coletadas (com herança):', rawPerms);
+
+          // Converte permissões em IDs de menu finais
+          const expanded = new Set<string>();
+          const starTokens = new Set(['*', 'all', 'tudo', 'todos']);
+
+          rawPerms.forEach((perm) => {
+            const key = String(perm).trim();
+            if (starTokens.has(key.toLowerCase())) {
+              allMenuIds.forEach((id) => expanded.add(id));
+              return;
+            }
+            const menus = permissionToMenus[key];
+            if (menus) menus.forEach((m) => expanded.add(m));
+          });
+
+          const normalized = Array.from(expanded);
+          console.log('✅ Menus liberados a partir das permissões:', normalized);
+
+          if (normalized.length > 0) {
+            setUserPermissions(normalized);
+            console.log('✓ Permissões definidas:', normalized);
+          } else {
+            console.log('⚠️ Nenhuma permissão mapeada, usando fallback');
+            const fallbackKey: UserRole = (roleKey || 'secretario') as UserRole;
+            const defaultPermissions: Record<UserRole, string[]> = {
+              administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis'],
+              diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio'],
+              coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio'],
+              secretario: ['professores','matricula','alunos','academico','notas','relatorio'],
+              professor: ['academico','notas','relatorio'],
+            };
+            setUserPermissions(defaultPermissions[fallbackKey] || []);
+            console.log('✓ Permissões fallback definidas:', defaultPermissions[fallbackKey]);
+          }
+        } else {
+          console.log('⚠️ Perfil de acesso não encontrado, usando fallback');
+          const fallbackKey: UserRole = (roleKey || 'secretario') as UserRole;
+          const defaultPermissions: Record<UserRole, string[]> = {
+            administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis'],
+            diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio'],
+            coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio'],
+            secretario: ['professores','matricula','alunos','academico','notas','relatorio'],
+            professor: ['academico','notas','relatorio'],
+          };
+          setUserPermissions(defaultPermissions[fallbackKey] || []);
+          console.log('✓ Permissões fallback definidas:', defaultPermissions[fallbackKey]);
         }
       } else {
         console.log('⚠️ Usuário não encontrado, criando perfil padrão');
