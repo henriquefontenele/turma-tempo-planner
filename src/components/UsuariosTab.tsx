@@ -26,7 +26,7 @@ export function UsuariosTab() {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const { userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
   const { toast } = useToast();
 
   // Verificar se o usuário tem permissão para gerenciar usuários
@@ -63,8 +63,12 @@ export function UsuariosTab() {
 
   const loadEscolas = async () => {
     try {
-      console.log('Carregando escolas...');
-      const querySnapshot = await getDocs(collection(db, 'escolas'));
+      if (!user) {
+        setEscolas([]);
+        return;
+      }
+      console.log('Carregando escolas do usuário...', user.uid);
+      const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'escolas'));
       const escolasData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -75,7 +79,6 @@ export function UsuariosTab() {
       console.error('Erro ao carregar escolas:', error);
     }
   };
-
   const loadPerfis = async () => {
     try {
       console.log('Carregando perfis...');

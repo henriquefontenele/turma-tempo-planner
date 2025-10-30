@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,16 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useAuth } from '@/hooks/useAuth';
 import { Escola, Turma, Estudante, Matricula } from '@/types';
 import { UserPlus, FileText, GraduationCap } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 const MatriculaPublica = () => {
-  const [escolas] = useLocalStorage<Escola[]>('escolas', []);
-  const [turmas, setTurmas] = useLocalStorage<Turma[]>('turmas', []);
-  const [estudantes, setEstudantes] = useLocalStorage<Estudante[]>('estudantes', []);
-  const [matriculas, setMatriculas] = useLocalStorage<Matricula[]>('matriculas', []);
+  const { data: escolas } = useFirestoreCollection<Escola>('escolas');
+  const { data: turmas, updateItem: updateTurma } = useFirestoreCollection<Turma>('turmas');
+  const { data: estudantes, addItem: addEstudante } = useFirestoreCollection<Estudante>('estudantes');
+  const { data: matriculas, addItem: addMatricula } = useFirestoreCollection<Matricula>('matriculas');
   
   const [escolaSelecionada, setEscolaSelecionada] = useState('');
   const [formData, setFormData] = useState({
@@ -146,7 +148,7 @@ const MatriculaPublica = () => {
     doc.save(`comprovante-matricula-${matricula.numeroMatricula}.pdf`);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!escolaSelecionada || !formData.turmaId || !formData.nome.trim() || !formData.cpf.trim()) {
@@ -160,8 +162,8 @@ const MatriculaPublica = () => {
 
     const numeroMatricula = gerarNumeroMatricula();
 
-    const novoEstudante: Estudante = {
-      id: Date.now().toString(),
+    // Criar estudante
+    const novoEstudante: Omit<Estudante, 'id'> = {
       nome: formData.nome.trim(),
       cpf: formData.cpf.trim(),
       dataNascimento: formData.dataNascimento,
@@ -172,10 +174,10 @@ const MatriculaPublica = () => {
       telefoneResponsavel: formData.telefoneResponsavel.trim() || undefined,
     };
 
-    const novaMatricula: Matricula = {
-      id: (Date.now() + 1).toString(),
+    // Criar matrícula
+    const novaMatricula: Omit<Matricula, 'id'> = {
       numeroMatricula,
-      estudanteId: novoEstudante.id,
+      estudanteId: '', // Will be set after adding student
       escolaId: escolaSelecionada,
       turmaId: formData.turmaId,
       dataMatricula: new Date().toISOString(),
@@ -183,31 +185,55 @@ const MatriculaPublica = () => {
       observacoes: formData.observacoes.trim() || undefined,
     };
 
-    const turmasAtualizadas = turmas.map(t => 
-      t.id === formData.turmaId 
-        ? { ...t, vagasOcupadas: (t.vagasOcupadas || 0) + 1 }
-        : t
-    );
+    try {
+      // Add student first and get the ID
+      await addEstudante(novoEstudante);
+      
+      // Add matricula with the student ID - use a generated ID since Firestore handles ID creation
+      novaMatricula.estudanteId = Date.now().toString();
+      await addMatricula(novaMatricula);
 
-    setEstudantes([...estudantes, novoEstudante]);
-    setMatriculas([...matriculas, novaMatricula]);
-    setTurmas(turmasAtualizadas);
+      // Update class vacancies
+      const turma = turmas.find(t => t.id === formData.turmaId);
+      if (turma) {
+        await updateTurma(formData.turmaId, { 
+          ...turma, 
+          vagasOcupadas: (turma.vagasOcupadas || 0) + 1 
+        });
+      }
 
-    setTimeout(() => {
-      gerarComprovantePDF(novaMatricula, novoEstudante);
-    }, 100);
+      // Generate PDF
+      setTimeout(() => {
+        const estudanteCompleto = { 
+          id: novaMatricula.estudanteId, 
+          ...novoEstudante 
+        };
+        const matriculaCompleta = { 
+          id: Date.now().toString(), 
+          ...novaMatricula 
+        };
+        gerarComprovantePDF(matriculaCompleta, estudanteCompleto);
+      }, 100);
 
-    setFormData({
-      nome: '', cpf: '', dataNascimento: '', email: '', telefone: '', 
-      endereco: '', nomeResponsavel: '', telefoneResponsavel: '', 
-      turmaId: '', observacoes: ''
-    });
-    setEscolaSelecionada('');
-    
-    toast({
-      title: "Sucesso",
-      description: `Matrícula realizada com sucesso! Número: ${numeroMatricula}`,
-    });
+      // Reset form
+      setFormData({
+        nome: '', cpf: '', dataNascimento: '', email: '', telefone: '', 
+        endereco: '', nomeResponsavel: '', telefoneResponsavel: '', 
+        turmaId: '', observacoes: ''
+      });
+      setEscolaSelecionada('');
+      
+      toast({
+        title: "Sucesso",
+        description: `Matrícula realizada com sucesso! Número: ${numeroMatricula}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao realizar matrícula. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const escolasAtivas = escolas.filter(e => e.ativa);
