@@ -12,7 +12,7 @@ import { Disciplina } from '@/types';
 import { Plus, Trash, Edit } from 'lucide-react';
 
 export function DisciplinasTab() {
-  const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina, loading, error } = useFirestoreCollection<Disciplina>('disciplinas');
+  const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina, loading, error } = useFirestoreCollection<Disciplina>('disciplinas', false);
   const [formData, setFormData] = useState({
     nome: '',
     cargaHorariaSemanal: 4,

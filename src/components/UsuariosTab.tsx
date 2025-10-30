@@ -63,12 +63,8 @@ export function UsuariosTab() {
 
   const loadEscolas = async () => {
     try {
-      if (!user) {
-        setEscolas([]);
-        return;
-      }
-      console.log('Carregando escolas do usuário...', user.uid);
-      const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'escolas'));
+      console.log('Carregando escolas globais...');
+      const querySnapshot = await getDocs(collection(db, 'escolas'));
       const escolasData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

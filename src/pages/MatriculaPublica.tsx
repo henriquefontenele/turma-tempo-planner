@@ -6,18 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestoreCollection } from '@/hooks/useFirestore';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useAuth } from '@/hooks/useAuth';
+import { usePublicFirestoreCollection } from '@/hooks/useFirestore';
 import { Escola, Turma, Estudante, Matricula } from '@/types';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { UserPlus, FileText, GraduationCap } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 const MatriculaPublica = () => {
-  const { data: escolas } = useFirestoreCollection<Escola>('escolas');
-  const { data: turmas, updateItem: updateTurma } = useFirestoreCollection<Turma>('turmas');
-  const { data: estudantes, addItem: addEstudante } = useFirestoreCollection<Estudante>('estudantes');
-  const { data: matriculas, addItem: addMatricula } = useFirestoreCollection<Matricula>('matriculas');
+  const { data: escolas } = usePublicFirestoreCollection<Escola>('escolas');
+  const { data: turmas } = usePublicFirestoreCollection<Turma>('turmas');
+  const { data: matriculas } = usePublicFirestoreCollection<Matricula>('matriculas');
   
   const [escolaSelecionada, setEscolaSelecionada] = useState('');
   const [formData, setFormData] = useState({
@@ -186,18 +185,17 @@ const MatriculaPublica = () => {
     };
 
     try {
-      // Add student first and get the ID
-      await addEstudante(novoEstudante);
+      // Add student
+      const estudanteRef = await addDoc(collection(db, 'estudantes'), novoEstudante);
       
-      // Add matricula with the student ID - use a generated ID since Firestore handles ID creation
-      novaMatricula.estudanteId = Date.now().toString();
-      await addMatricula(novaMatricula);
+      // Add matricula with the student ID
+      novaMatricula.estudanteId = estudanteRef.id;
+      const matriculaRef = await addDoc(collection(db, 'matriculas'), novaMatricula);
 
       // Update class vacancies
       const turma = turmas.find(t => t.id === formData.turmaId);
       if (turma) {
-        await updateTurma(formData.turmaId, { 
-          ...turma, 
+        await updateDoc(doc(db, 'turmas', formData.turmaId), { 
           vagasOcupadas: (turma.vagasOcupadas || 0) + 1 
         });
       }
@@ -205,12 +203,13 @@ const MatriculaPublica = () => {
       // Generate PDF
       setTimeout(() => {
         const estudanteCompleto = { 
-          id: novaMatricula.estudanteId, 
+          id: estudanteRef.id, 
           ...novoEstudante 
         };
         const matriculaCompleta = { 
-          id: Date.now().toString(), 
-          ...novaMatricula 
+          id: matriculaRef.id, 
+          ...novaMatricula,
+          estudanteId: estudanteRef.id
         };
         gerarComprovantePDF(matriculaCompleta, estudanteCompleto);
       }, 100);
@@ -228,6 +227,7 @@ const MatriculaPublica = () => {
         description: `Matrícula realizada com sucesso! Número: ${numeroMatricula}`,
       });
     } catch (error) {
+      console.error('Erro ao realizar matrícula:', error);
       toast({
         title: "Erro",
         description: "Erro ao realizar matrícula. Tente novamente.",

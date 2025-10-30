@@ -13,7 +13,7 @@ import { Escola } from '@/types';
 import { Plus, Trash2, Building, Edit } from 'lucide-react';
 
 export function EscolasTab() {
-  const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas');
+  const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas', true);
   const [formData, setFormData] = useState({
     nome: '',
     endereco: '',

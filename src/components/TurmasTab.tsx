@@ -13,9 +13,9 @@ import { Disciplina, Turma, Escola } from '@/types';
 import { Plus, Trash, Edit } from 'lucide-react';
 
 export function TurmasTab() {
-  const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas');
-  const { data: disciplinas } = useFirestoreCollection<Disciplina>('disciplinas');
-  const { data: escolas } = useFirestoreCollection<Escola>('escolas');
+  const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas', true);
+  const { data: disciplinas } = useFirestoreCollection<Disciplina>('disciplinas', false);
+  const { data: escolas } = useFirestoreCollection<Escola>('escolas', true);
   const [formData, setFormData] = useState({
     nome: '',
     serie: '',

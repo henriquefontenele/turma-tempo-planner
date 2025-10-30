@@ -13,10 +13,10 @@ import { UserPlus, FileText, Download, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 export function MatriculaTab() {
-  const { data: escolas } = useFirestoreCollection<Escola>('escolas');
-  const { data: turmas, updateItem: updateTurma } = useFirestoreCollection<Turma>('turmas');
-  const { data: estudantes, addItem: addEstudante } = useFirestoreCollection<Estudante>('estudantes');
-  const { data: matriculas, addItem: addMatricula } = useFirestoreCollection<Matricula>('matriculas');
+  const { data: escolas } = useFirestoreCollection<Escola>('escolas', true);
+  const { data: turmas, updateItem: updateTurma } = useFirestoreCollection<Turma>('turmas', true);
+  const { data: estudantes, addItem: addEstudante } = useFirestoreCollection<Estudante>('estudantes', true);
+  const { data: matriculas, addItem: addMatricula } = useFirestoreCollection<Matricula>('matriculas', true);
   const [escolaSelecionada, setEscolaSelecionada] = useState('');
   const [formData, setFormData] = useState({
     nome: '',

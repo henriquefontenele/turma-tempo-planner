@@ -46,20 +46,20 @@ export default function Index() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas');
-  const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas');
-  const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina } = useFirestoreCollection<Disciplina>('disciplinas');
-  const { data: professores, addItem: addProfessor, updateItem: updateProfessor, deleteItem: deleteProfessor } = useFirestoreCollection<Professor>('professores');
-  const { data: estudantes, addItem: addEstudante, updateItem: updateEstudante, deleteItem: deleteEstudante } = useFirestoreCollection<Estudante>('estudantes');
-  const { data: matriculas, addItem: addMatricula, updateItem: updateMatricula, deleteItem: deleteMatricula } = useFirestoreCollection<Matricula>('matriculas');
+  const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas', true);
+  const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas', true);
+  const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina } = useFirestoreCollection<Disciplina>('disciplinas', false);
+  const { data: professores, addItem: addProfessor, updateItem: updateProfessor, deleteItem: deleteProfessor } = useFirestoreCollection<Professor>('professores', false);
+  const { data: estudantes, addItem: addEstudante, updateItem: updateEstudante, deleteItem: deleteEstudante } = useFirestoreCollection<Estudante>('estudantes', true);
+  const { data: matriculas, addItem: addMatricula, updateItem: updateMatricula, deleteItem: deleteMatricula } = useFirestoreCollection<Matricula>('matriculas', true);
   const { data: configuracoes, updateData: setConfiguracoes } = useFirestoreDoc<Configuracoes>('configuracoes', {
     manhã: { inicioAulas: '07:00', fimAulas: '12:00', intervalo: '09:30-09:50', aulasPorDia: 5 },
     tarde: { inicioAulas: '13:00', fimAulas: '18:00', intervalo: '15:30-15:50', aulasPorDia: 5 },
     noite: { inicioAulas: '19:00', fimAulas: '23:00', intervalo: '21:00-21:15', aulasPorDia: 4 },
   });
-  const { data: horariosGerados, addItem: addHorario, updateItem: updateHorario, deleteItem: deleteHorario, setData: setHorariosGerados } = useFirestoreCollection<HorarioGerado>('horarios-gerados');
-  const { data: registrosFrequencia, addItem: addRegistroFrequencia, updateItem: updateRegistroFrequencia, deleteItem: deleteRegistroFrequencia, setData: setRegistrosFrequencia } = useFirestoreCollection<RegistroFrequencia>('registros-frequencia');
-  const { data: registrosNotas, addItem: addRegistroNota, updateItem: updateRegistroNota, deleteItem: deleteRegistroNota, setData: setRegistrosNotas } = useFirestoreCollection<RegistroNota>('registros-notas');
+  const { data: horariosGerados, addItem: addHorario, updateItem: updateHorario, deleteItem: deleteHorario, setData: setHorariosGerados } = useFirestoreCollection<HorarioGerado>('horarios-gerados', true);
+  const { data: registrosFrequencia, addItem: addRegistroFrequencia, updateItem: updateRegistroFrequencia, deleteItem: deleteRegistroFrequencia, setData: setRegistrosFrequencia } = useFirestoreCollection<RegistroFrequencia>('registros-frequencia', true);
+  const { data: registrosNotas, addItem: addRegistroNota, updateItem: updateRegistroNota, deleteItem: deleteRegistroNota, setData: setRegistrosNotas } = useFirestoreCollection<RegistroNota>('registros-notas', true);
 
   useEffect(() => {
     if (!user) {
