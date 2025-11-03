@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function UsuariosTab() {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
-  const { data: escolas } = useFirestoreCollection<Escola>('escolas', false);
+  const { data: escolas, loading: escolasLoading } = useFirestoreCollection<Escola>('escolas', false);
   const [perfis, setPerfis] = useState<PerfilAcesso[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -458,7 +458,11 @@ export function UsuariosTab() {
                   Selecione as escolas que este usuário pode acessar
                 </p>
                 <div className="grid grid-cols-1 gap-2 mt-2 max-h-32 overflow-y-auto border rounded p-2 bg-gray-50">
-                  {escolas.length === 0 ? (
+                  {escolasLoading ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground">Carregando escolas...</p>
+                    </div>
+                  ) : escolas.length === 0 ? (
                     <div className="text-center py-4">
                       <p className="text-sm text-muted-foreground mb-2">
                         📚 Nenhuma escola cadastrada
