@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
+import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function UsuariosTab() {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
-  const [escolas, setEscolas] = useState<Escola[]>([]);
+  const { data: escolas } = useFirestoreCollection<Escola>('escolas', false);
   const [perfis, setPerfis] = useState<PerfilAcesso[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -35,7 +36,6 @@ export function UsuariosTab() {
   useEffect(() => {
     if (canManageUsers) {
       loadUsuarios();
-      loadEscolas();
       loadPerfis();
     }
   }, [canManageUsers]);
@@ -61,20 +61,6 @@ export function UsuariosTab() {
     }
   };
 
-  const loadEscolas = async () => {
-    try {
-      console.log('Carregando escolas globais...');
-      const querySnapshot = await getDocs(collection(db, 'escolas'));
-      const escolasData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Escola[];
-      console.log('Escolas carregadas:', escolasData);
-      setEscolas(escolasData);
-    } catch (error) {
-      console.error('Erro ao carregar escolas:', error);
-    }
-  };
   const loadPerfis = async () => {
     try {
       console.log('Carregando perfis...');
