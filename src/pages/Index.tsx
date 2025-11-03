@@ -20,6 +20,10 @@ import { MatriculaTab } from '@/components/MatriculaTab';
 import { UsuariosTab } from '@/components/UsuariosTab';
 import { PerfisTab } from '@/components/PerfisTab';
 import { Dashboard } from '@/components/Dashboard';
+import { CursosEADTab } from '@/components/CursosEADTab';
+import { AulasEADTab } from '@/components/AulasEADTab';
+import { MatriculasEADTab } from '@/components/MatriculasEADTab';
+import { RelatorioEADTab } from '@/components/RelatorioEADTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 
 // Mapeamento dos nomes das funcionalidades
@@ -38,7 +42,11 @@ const tabNames: Record<string, string> = {
   notas: 'Notas',
   relatorio: 'Relatório',
   usuarios: 'Usuários',
-  perfis: 'Perfis de Acesso'
+  perfis: 'Perfis de Acesso',
+  'cursos-ead': 'Cursos EAD',
+  'aulas-ead': 'Aulas EAD',
+  'matriculas-ead': 'Matrículas EAD',
+  'relatorio-ead': 'Relatórios EAD'
 };
 
 export default function Index() {
@@ -302,6 +310,14 @@ export default function Index() {
         return <UsuariosTab />;
       case 'perfis':
         return <PerfisTab />;
+      case 'cursos-ead':
+        return <CursosEADTab />;
+      case 'aulas-ead':
+        return <AulasEADTab />;
+      case 'matriculas-ead':
+        return <MatriculasEADTab />;
+      case 'relatorio-ead':
+        return <RelatorioEADTab />;
       default:
         return (
           <Dashboard

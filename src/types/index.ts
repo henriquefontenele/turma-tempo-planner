@@ -179,3 +179,73 @@ export interface PerfilAcesso {
   editavel: boolean; // Se pode ser editado (administrador é false)
   usuariosCount?: number;
 }
+
+// Educação a Distância - EAD
+export interface CursoEAD {
+  id: string;
+  nome: string;
+  descricao: string;
+  cargaHoraria: number;
+  disciplinaId?: string;
+  escolaIds: string[];
+  status: 'rascunho' | 'publicado' | 'arquivado';
+  dataInicio?: string;
+  dataFim?: string;
+  plataforma?: string;
+  linkPlataforma?: string;
+  imagemUrl?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface ModuloEAD {
+  id: string;
+  cursoId: string;
+  nome: string;
+  descricao: string;
+  ordem: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface AulaEAD {
+  id: string;
+  cursoId: string;
+  moduloId?: string;
+  titulo: string;
+  descricao: string;
+  tipo: 'video' | 'texto' | 'pdf' | 'link' | 'quiz';
+  conteudo: string; // URL do vídeo, link, ou conteúdo texto
+  duracao?: number; // em minutos
+  ordem: number;
+  obrigatoria: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface MatriculaEAD {
+  id: string;
+  cursoId: string;
+  estudanteId: string;
+  escolaId: string;
+  dataMatricula: string;
+  status: 'ativa' | 'concluida' | 'cancelada' | 'trancada';
+  progresso: number; // 0-100
+  dataConclusao?: string;
+  notaFinal?: number;
+  certificadoUrl?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface ProgressoAulaEAD {
+  id: string;
+  matriculaEADId: string;
+  aulaId: string;
+  concluida: boolean;
+  dataInicio?: string;
+  dataConclusao?: string;
+  tempoGasto?: number; // em minutos
+  createdAt?: Date;
+  updatedAt?: Date;
+}

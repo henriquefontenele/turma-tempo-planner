@@ -43,6 +43,15 @@ const menuGroups = [
     ]
   },
   {
+    label: 'EAD',
+    items: [
+      { id: 'cursos-ead', label: 'Cursos', emoji: '🎬' },
+      { id: 'aulas-ead', label: 'Aulas', emoji: '📹' },
+      { id: 'matriculas-ead', label: 'Matrículas', emoji: '👨‍💻' },
+      { id: 'relatorio-ead', label: 'Relatórios', emoji: '📈' },
+    ]
+  },
+  {
     label: 'HORÁRIO',
     items: [
       { id: 'gerador', label: 'Gerador', emoji: '🎯' },
