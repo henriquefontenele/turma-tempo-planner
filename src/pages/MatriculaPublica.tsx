@@ -9,12 +9,13 @@ import { useToast } from '@/hooks/use-toast';
 import { usePublicFirestoreCollection } from '@/hooks/useFirestore';
 import { Escola, Turma, Estudante, Matricula } from '@/types';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { signInAnonymously } from 'firebase/auth';
 import { UserPlus, FileText, GraduationCap } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 const MatriculaPublica = () => {
-  const { data: escolas } = usePublicFirestoreCollection<Escola>('escolas');
+  const { data: escolas, loading: escolasLoading, error: escolasError } = usePublicFirestoreCollection<Escola>('escolas');
   const { data: turmas } = usePublicFirestoreCollection<Turma>('turmas');
   const { data: matriculas } = usePublicFirestoreCollection<Matricula>('matriculas');
   
@@ -31,6 +32,14 @@ const MatriculaPublica = () => {
     turmaId: '',
     observacoes: '',
   });
+
+  // Garante leitura pública mesmo com regras que exigem auth
+  useEffect(() => {
+    signInAnonymously(auth).catch((err) => {
+      console.error('Falha ao autenticar anonimamente:', err);
+    });
+  }, []);
+
   const { toast } = useToast();
 
   const turmasDisponiveis = turmas.filter(t => 
@@ -262,22 +271,39 @@ const MatriculaPublica = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Seleção de Escola */}
-              <div>
-                <Label>Escola *</Label>
-                <Select value={escolaSelecionada} onValueChange={setEscolaSelecionada}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma escola" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {escolasAtivas.map((escola) => (
-                      <SelectItem key={escola.id} value={escola.id}>
-                        {escola.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                {/* Seleção de Escola */}
+                <div>
+                  <Label>Escola *</Label>
+                  <Select value={escolaSelecionada} onValueChange={setEscolaSelecionada}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma escola" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50">
+                      {escolasLoading ? (
+                        <SelectItem value="" disabled>Carregando escolas...</SelectItem>
+                      ) : escolasError ? (
+                        <SelectItem value="" disabled>Erro ao carregar escolas</SelectItem>
+                      ) : escolasAtivas.length === 0 ? (
+                        <SelectItem value="" disabled>Nenhuma escola disponível</SelectItem>
+                      ) : (
+                        escolasAtivas.map((escola) => (
+                          <SelectItem key={escola.id} value={escola.id}>
+                            {escola.nome}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {/* Debug info visible only during development */}
+                  {escolasError && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Debug: Erro ao carregar: {escolasError}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Debug: {escolas.length} escolas encontradas, {escolasAtivas.length} ativas
+                  </p>
+                </div>
 
               {/* Seleção de Turma */}
               {escolaSelecionada && (
