@@ -182,7 +182,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             'disciplinas','professores','turmas','escolas','config',
             'usuarios','perfis','alunos','matricula','vagas',
             'gerador','horarios','academico','notas','relatorio',
-            'cursos-ead','aulas-ead','matriculas-ead','relatorio-ead'
+            'cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'
           ];
 
           // Mapeia permissões (do PerfisTab) -> menus
@@ -206,6 +206,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             visualizar_notas: ['notas'],
             acessar_relatorios: ['relatorio'],
             gerenciar_cursos_ead: ['cursos-ead'],
+            gerenciar_modulos_ead: ['modulos-ead'],
             gerenciar_aulas_ead: ['aulas-ead'],
             gerenciar_matriculas_ead: ['matriculas-ead'],
             acessar_relatorios_ead: ['relatorio-ead'],
@@ -258,10 +259,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log('⚠️ Nenhuma permissão mapeada, usando fallback');
             const fallbackKey: UserRole = (roleKey || 'secretario') as UserRole;
             const defaultPermissions: Record<UserRole, string[]> = {
-              administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis','cursos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-              diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio','cursos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-              coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio','cursos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-              secretario: ['professores','matricula','alunos','academico','notas','relatorio','cursos-ead','matriculas-ead','relatorio-ead'],
+              administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
+              diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
+              coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
+              secretario: ['professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','matriculas-ead','relatorio-ead'],
               professor: ['academico','notas','relatorio','matriculas-ead','relatorio-ead'],
             };
             setUserPermissions(defaultPermissions[fallbackKey] || []);
@@ -271,10 +272,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           console.log('⚠️ Perfil de acesso não encontrado, usando fallback');
           const fallbackKey: UserRole = (roleKey || 'secretario') as UserRole;
           const defaultPermissions: Record<UserRole, string[]> = {
-            administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis','cursos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-            diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio','cursos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-            coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio','cursos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-            secretario: ['professores','matricula','alunos','academico','notas','relatorio','cursos-ead','matriculas-ead','relatorio-ead'],
+            administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
+            diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
+            coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
+            secretario: ['professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','matriculas-ead','relatorio-ead'],
             professor: ['academico','notas','relatorio','matriculas-ead','relatorio-ead'],
           };
           setUserPermissions(defaultPermissions[fallbackKey] || []);

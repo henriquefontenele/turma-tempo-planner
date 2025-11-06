@@ -21,6 +21,7 @@ import { UsuariosTab } from '@/components/UsuariosTab';
 import { PerfisTab } from '@/components/PerfisTab';
 import { Dashboard } from '@/components/Dashboard';
 import { CursosEADTab } from '@/components/CursosEADTab';
+import { ModulosEADTab } from '@/components/ModulosEADTab';
 import { AulasEADTab } from '@/components/AulasEADTab';
 import { MatriculasEADTab } from '@/components/MatriculasEADTab';
 import { RelatorioEADTab } from '@/components/RelatorioEADTab';
@@ -44,6 +45,7 @@ const tabNames: Record<string, string> = {
   usuarios: 'Usuários',
   perfis: 'Perfis de Acesso',
   'cursos-ead': 'Cursos EAD',
+  'modulos-ead': 'Módulos EAD',
   'aulas-ead': 'Aulas EAD',
   'matriculas-ead': 'Matrículas EAD',
   'relatorio-ead': 'Relatórios EAD'
@@ -312,6 +314,8 @@ export default function Index() {
         return <PerfisTab />;
       case 'cursos-ead':
         return <CursosEADTab />;
+      case 'modulos-ead':
+        return <ModulosEADTab />;
       case 'aulas-ead':
         return <AulasEADTab />;
       case 'matriculas-ead':

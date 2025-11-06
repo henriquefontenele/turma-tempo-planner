@@ -46,6 +46,7 @@ const menuGroups = [
     label: 'EAD',
     items: [
       { id: 'cursos-ead', label: 'Cursos', emoji: '🎬' },
+      { id: 'modulos-ead', label: 'Módulos', emoji: '📚' },
       { id: 'aulas-ead', label: 'Aulas', emoji: '📹' },
       { id: 'matriculas-ead', label: 'Matrículas', emoji: '👨‍💻' },
       { id: 'relatorio-ead', label: 'Relatórios', emoji: '📈' },
