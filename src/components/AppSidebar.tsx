@@ -127,7 +127,10 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
-                      onClick={() => onTabChange(item.id)}
+                      onClick={() => {
+                        console.debug('[AppSidebar] tab click', item.id)
+                        onTabChange(item.id)
+                      }}
                       isActive={activeTab === item.id}
                       className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium transition-colors duration-200"
                       data-active={activeTab === item.id}

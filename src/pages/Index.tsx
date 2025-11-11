@@ -314,8 +314,10 @@ export default function Index() {
         return <PerfisTab />;
       case 'cursos-ead':
         return <CursosEADTab />;
-      case 'modulos-ead':
+      case 'modulos-ead': {
+        console.debug('[Index] Rendering ModulosEADTab')
         return <ModulosEADTab />;
+      }
       case 'aulas-ead':
         return <AulasEADTab />;
       case 'matriculas-ead':

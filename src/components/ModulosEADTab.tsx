@@ -132,6 +132,7 @@ export function ModulosEADTab() {
 
   const sortedModulos = [...filteredModulos].sort((a, b) => a.ordem - b.ordem);
 
+  console.debug('[ModulosEADTab] render', { modulos: modulos.length, cursos: cursos.length });
   return (
     <Card>
       <CardHeader>
@@ -147,7 +148,7 @@ export function ModulosEADTab() {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => handleCloseDialog()}>
+              <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Módulo
               </Button>
