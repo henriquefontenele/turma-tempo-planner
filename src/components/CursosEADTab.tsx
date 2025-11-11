@@ -47,7 +47,7 @@ export function CursosEADTab() {
     nome: '',
     descricao: '',
     cargaHoraria: 0,
-    disciplinaId: '',
+    disciplinaId: 'none',
     escolaIds: [],
     status: 'rascunho',
     dataInicio: '',
@@ -79,14 +79,19 @@ export function CursosEADTab() {
     }
 
     try {
+      const submitData = {
+        ...formData,
+        disciplinaId: formData.disciplinaId === 'none' ? '' : formData.disciplinaId,
+      };
+      
       if (editingCurso) {
-        await updateItem(editingCurso.id, formData);
+        await updateItem(editingCurso.id, submitData);
         toast({
           title: 'Sucesso',
           description: 'Curso atualizado com sucesso',
         });
       } else {
-        await addItem(formData as any);
+        await addItem(submitData as any);
         toast({
           title: 'Sucesso',
           description: 'Curso cadastrado com sucesso',
@@ -104,7 +109,10 @@ export function CursosEADTab() {
 
   const handleEdit = (curso: CursoEAD) => {
     setEditingCurso(curso);
-    setFormData(curso);
+    setFormData({
+      ...curso,
+      disciplinaId: curso.disciplinaId || 'none',
+    });
     setIsDialogOpen(true);
   };
 
@@ -133,7 +141,7 @@ export function CursosEADTab() {
       nome: '',
       descricao: '',
       cargaHoraria: 0,
-      disciplinaId: '',
+      disciplinaId: 'none',
       escolaIds: [],
       status: 'rascunho',
       dataInicio: '',
@@ -253,14 +261,14 @@ export function CursosEADTab() {
                     <div>
                       <Label htmlFor="disciplinaId">Disciplina Relacionada</Label>
                       <Select
-                        value={formData.disciplinaId}
+                        value={formData.disciplinaId || 'none'}
                         onValueChange={(value) => setFormData({ ...formData, disciplinaId: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhuma</SelectItem>
+                          <SelectItem value="none">Nenhuma</SelectItem>
                           {disciplinas.map((disc) => (
                             <SelectItem key={disc.id} value={disc.id}>
                               {disc.nome}

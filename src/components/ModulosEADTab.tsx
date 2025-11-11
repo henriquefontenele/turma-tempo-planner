@@ -36,7 +36,7 @@ export function ModulosEADTab() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingModulo, setEditingModulo] = useState<ModuloEAD | null>(null);
-  const [selectedCurso, setSelectedCurso] = useState('');
+  const [selectedCurso, setSelectedCurso] = useState('all');
 
   const { data: modulos, addItem, updateItem, deleteItem } = useFirestoreCollection<ModuloEAD>('modulosEAD');
   const { data: cursos } = useFirestoreCollection<CursoEAD>('cursosEAD', false);
@@ -126,7 +126,7 @@ export function ModulosEADTab() {
     });
   };
 
-  const filteredModulos = selectedCurso
+  const filteredModulos = (selectedCurso && selectedCurso !== 'all')
     ? modulos.filter(m => m.cursoId === selectedCurso)
     : modulos;
 
@@ -247,12 +247,12 @@ export function ModulosEADTab() {
           <div className="flex gap-4">
             <div className="flex-1">
               <Label>Filtrar por Curso</Label>
-              <Select value={selectedCurso} onValueChange={setSelectedCurso}>
+              <Select value={selectedCurso || 'all'} onValueChange={setSelectedCurso}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os cursos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os cursos</SelectItem>
+                  <SelectItem value="all">Todos os cursos</SelectItem>
                   {cursos.map((curso) => (
                     <SelectItem key={curso.id} value={curso.id}>
                       {curso.nome}

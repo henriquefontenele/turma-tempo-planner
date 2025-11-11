@@ -37,7 +37,7 @@ export function AulasEADTab() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAula, setEditingAula] = useState<AulaEAD | null>(null);
-  const [selectedCurso, setSelectedCurso] = useState('');
+  const [selectedCurso, setSelectedCurso] = useState('all');
 
   const { data: aulas, addItem, updateItem, deleteItem } = useFirestoreCollection<AulaEAD>('aulasEAD');
   const { data: cursos } = useFirestoreCollection<CursoEAD>('cursosEAD', false);
@@ -45,7 +45,7 @@ export function AulasEADTab() {
 
   const [formData, setFormData] = useState<Partial<AulaEAD>>({
     cursoId: '',
-    moduloId: '',
+    moduloId: 'none',
     titulo: '',
     descricao: '',
     tipo: 'video',
@@ -68,14 +68,19 @@ export function AulasEADTab() {
     }
 
     try {
+      const submitData = {
+        ...formData,
+        moduloId: formData.moduloId === 'none' ? '' : formData.moduloId,
+      };
+      
       if (editingAula) {
-        await updateItem(editingAula.id, formData);
+        await updateItem(editingAula.id, submitData);
         toast({
           title: 'Sucesso',
           description: 'Aula atualizada com sucesso',
         });
       } else {
-        await addItem(formData as any);
+        await addItem(submitData as any);
         toast({
           title: 'Sucesso',
           description: 'Aula cadastrada com sucesso',
@@ -93,7 +98,10 @@ export function AulasEADTab() {
 
   const handleEdit = (aula: AulaEAD) => {
     setEditingAula(aula);
-    setFormData(aula);
+    setFormData({
+      ...aula,
+      moduloId: aula.moduloId || 'none',
+    });
     setIsDialogOpen(true);
   };
 
@@ -120,7 +128,7 @@ export function AulasEADTab() {
     setEditingAula(null);
     setFormData({
       cursoId: '',
-      moduloId: '',
+      moduloId: 'none',
       titulo: '',
       descricao: '',
       tipo: 'video',
@@ -131,7 +139,7 @@ export function AulasEADTab() {
     });
   };
 
-  const filteredAulas = selectedCurso
+  const filteredAulas = (selectedCurso && selectedCurso !== 'all')
     ? aulas.filter(aula => aula.cursoId === selectedCurso)
     : aulas;
 
@@ -165,7 +173,7 @@ export function AulasEADTab() {
     return <Badge className={colors[tipo as keyof typeof colors]}>{tipo}</Badge>;
   };
 
-  const modulosDoCurso = selectedCurso
+  const modulosDoCurso = (selectedCurso && selectedCurso !== 'all')
     ? modulos.filter(m => m.cursoId === selectedCurso)
     : modulos;
 
@@ -221,7 +229,7 @@ export function AulasEADTab() {
                     <div className="col-span-2">
                       <Label htmlFor="moduloId">Módulo (opcional)</Label>
                       <Select
-                        value={formData.moduloId}
+                        value={formData.moduloId || 'none'}
                         onValueChange={(value) => setFormData({ ...formData, moduloId: value })}
                         disabled={!formData.cursoId}
                       >
@@ -229,7 +237,7 @@ export function AulasEADTab() {
                           <SelectValue placeholder="Selecione um módulo..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhum</SelectItem>
+                          <SelectItem value="none">Nenhum</SelectItem>
                           {modulosDoCurso
                             .filter(m => m.cursoId === formData.cursoId)
                             .map((modulo) => (
@@ -353,12 +361,12 @@ export function AulasEADTab() {
         <CardContent>
           <div className="mb-4">
             <Label>Filtrar por Curso</Label>
-            <Select value={selectedCurso} onValueChange={setSelectedCurso}>
+            <Select value={selectedCurso || 'all'} onValueChange={setSelectedCurso}>
               <SelectTrigger>
                 <SelectValue placeholder="Todos os cursos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os cursos</SelectItem>
+                <SelectItem value="all">Todos os cursos</SelectItem>
                 {cursos.map((curso) => (
                   <SelectItem key={curso.id} value={curso.id}>
                     {curso.nome}

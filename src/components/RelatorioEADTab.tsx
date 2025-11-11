@@ -23,14 +23,14 @@ import { MatriculaEAD, CursoEAD, Estudante, AulaEAD } from '@/types';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
 
 export function RelatorioEADTab() {
-  const [selectedCurso, setSelectedCurso] = useState('');
+  const [selectedCurso, setSelectedCurso] = useState('all');
 
   const { data: matriculas } = useFirestoreCollection<MatriculaEAD>('matriculasEAD');
   const { data: cursos } = useFirestoreCollection<CursoEAD>('cursosEAD', false);
   const { data: estudantes } = useFirestoreCollection<Estudante>('estudantes');
   const { data: aulas } = useFirestoreCollection<AulaEAD>('aulasEAD', false);
 
-  const filteredMatriculas = selectedCurso
+  const filteredMatriculas = (selectedCurso && selectedCurso !== 'all')
     ? matriculas.filter(m => m.cursoId === selectedCurso)
     : matriculas;
 
@@ -228,12 +228,12 @@ export function RelatorioEADTab() {
             </div>
             <div className="w-64">
               <Label>Filtrar por Curso</Label>
-              <Select value={selectedCurso} onValueChange={setSelectedCurso}>
+              <Select value={selectedCurso || 'all'} onValueChange={setSelectedCurso}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os cursos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os cursos</SelectItem>
+                  <SelectItem value="all">Todos os cursos</SelectItem>
                   {cursos.map((curso) => (
                     <SelectItem key={curso.id} value={curso.id}>
                       {curso.nome}
