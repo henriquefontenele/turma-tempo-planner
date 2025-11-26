@@ -13,7 +13,7 @@ import { AlunosTab } from '@/components/AlunosTab';
 import { HorariosTab } from '@/components/HorariosTab';
 import { AcademicoTab } from '@/components/AcademicoTab';
 import { NotasTab } from '@/components/NotasTab';
-import { RelatorioTab } from '@/components/RelatorioTab';
+import { RelatoriosUnificadosTab } from '@/components/RelatoriosUnificadosTab';
 import { GeradorTab } from '@/components/GeradorTab';
 import { ConfigTab } from '@/components/ConfigTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
@@ -24,7 +24,6 @@ import { CursosEADTab } from '@/components/CursosEADTab';
 import { ModulosEADTab } from '@/components/ModulosEADTab';
 import { AulasEADTab } from '@/components/AulasEADTab';
 import { MatriculasEADTab } from '@/components/MatriculasEADTab';
-import { RelatorioEADTab } from '@/components/RelatorioEADTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 
 // Mapeamento dos nomes das funcionalidades
@@ -41,14 +40,13 @@ const tabNames: Record<string, string> = {
   horarios: 'Horários',
   academico: 'Frequência',
   notas: 'Notas',
-  relatorio: 'Relatório',
+  relatorios: 'Relatórios',
   usuarios: 'Usuários',
   perfis: 'Perfis de Acesso',
   'cursos-ead': 'Cursos EAD',
   'modulos-ead': 'Módulos EAD',
   'aulas-ead': 'Aulas EAD',
-  'matriculas-ead': 'Matrículas EAD',
-  'relatorio-ead': 'Relatórios EAD'
+  'matriculas-ead': 'Matrículas EAD'
 };
 
 export default function Index() {
@@ -295,9 +293,9 @@ export default function Index() {
             onRegistrosNotasChange={setRegistrosNotas}
           />
         );
-      case 'relatorio':
+      case 'relatorios':
         return (
-          <RelatorioTab
+          <RelatoriosUnificadosTab
             escolas={escolas}
             turmas={turmas}
             estudantes={estudantes}
@@ -322,8 +320,6 @@ export default function Index() {
         return <AulasEADTab />;
       case 'matriculas-ead':
         return <MatriculasEADTab />;
-      case 'relatorio-ead':
-        return <RelatorioEADTab />;
       default:
         return (
           <Dashboard
