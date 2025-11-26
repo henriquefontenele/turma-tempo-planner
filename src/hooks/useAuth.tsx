@@ -181,8 +181,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           const allMenuIds = [
             'disciplinas','professores','turmas','escolas','config',
             'usuarios','perfis','alunos','matricula','vagas',
-            'gerador','horarios','academico','notas','relatorio',
-            'cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'
+            'gerador','horarios','academico','notas','relatorios',
+            'cursos-ead','modulos-ead','aulas-ead','matriculas-ead'
           ];
 
           // Mapeia permissões (do PerfisTab) -> menus
@@ -204,12 +204,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             visualizar_frequencia: ['academico'],
             registrar_notas: ['notas'],
             visualizar_notas: ['notas'],
-            acessar_relatorios: ['relatorio'],
+            acessar_relatorios: ['relatorios'],
             gerenciar_cursos_ead: ['cursos-ead'],
             gerenciar_modulos_ead: ['modulos-ead'],
             gerenciar_aulas_ead: ['aulas-ead'],
             gerenciar_matriculas_ead: ['matriculas-ead'],
-            acessar_relatorios_ead: ['relatorio-ead'],
+            acessar_relatorios_ead: ['relatorios'],
           };
 
           // Agregar permissões: próprias + herdadas recursivamente
@@ -259,11 +259,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log('⚠️ Nenhuma permissão mapeada, usando fallback');
             const fallbackKey: UserRole = (roleKey || 'secretario') as UserRole;
             const defaultPermissions: Record<UserRole, string[]> = {
-              administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-              diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-              coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-              secretario: ['professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','matriculas-ead','relatorio-ead'],
-              professor: ['academico','notas','relatorio','matriculas-ead','relatorio-ead'],
+              administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorios','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead'],
+              diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead'],
+              coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead'],
+              secretario: ['professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','matriculas-ead'],
+              professor: ['academico','notas','relatorios','matriculas-ead'],
             };
             setUserPermissions(defaultPermissions[fallbackKey] || []);
             console.log('✓ Permissões fallback definidas:', defaultPermissions[fallbackKey]);
@@ -272,11 +272,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           console.log('⚠️ Perfil de acesso não encontrado, usando fallback');
           const fallbackKey: UserRole = (roleKey || 'secretario') as UserRole;
           const defaultPermissions: Record<UserRole, string[]> = {
-            administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorio','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-            diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-            coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','relatorio-ead'],
-            secretario: ['professores','matricula','alunos','academico','notas','relatorio','cursos-ead','modulos-ead','matriculas-ead','relatorio-ead'],
-            professor: ['academico','notas','relatorio','matriculas-ead','relatorio-ead'],
+            administrador: ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorios','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead'],
+            diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead'],
+            coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead'],
+            secretario: ['professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','matriculas-ead'],
+            professor: ['academico','notas','relatorios','matriculas-ead'],
           };
           setUserPermissions(defaultPermissions[fallbackKey] || []);
           console.log('✓ Permissões fallback definidas:', defaultPermissions[fallbackKey]);
@@ -294,7 +294,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         };
         await setDoc(doc(db, 'users', user.uid), defaultProfile);
         setUserProfile(defaultProfile);
-        setUserPermissions(['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorio']);
+        setUserPermissions(['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorios']);
       }
     } catch (error) {
       console.error('Erro ao carregar perfil do usuário:', error);
