@@ -49,7 +49,6 @@ const menuGroups = [
       { id: 'modulos-ead', label: 'Módulos', emoji: '📚' },
       { id: 'aulas-ead', label: 'Aulas', emoji: '📹' },
       { id: 'matriculas-ead', label: 'Matrículas', emoji: '👨‍💻' },
-      { id: 'relatorio-ead', label: 'Relatórios', emoji: '📈' },
     ]
   },
   {
@@ -64,7 +63,7 @@ const menuGroups = [
     items: [
       { id: 'academico', label: 'Frequência', emoji: '📋' },
       { id: 'notas', label: 'Notas', emoji: '📝' },
-      { id: 'relatorio', label: 'Relatório', emoji: '📊' },
+      { id: 'relatorios', label: 'Relatórios', emoji: '📊' },
     ]
   }
 ];
