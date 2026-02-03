@@ -299,6 +299,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error) {
       console.error('Erro ao carregar perfil do usuário:', error);
+
+      // Evita ficar sem menu caso haja falha de permissão/rede ao ler Firestore.
+      // Importante: isso só controla visibilidade de menu; a validação de dados deve continuar no backend/regras.
+      const fallbackProfile: UserProfile = {
+        id: user.uid,
+        email: user.email || '',
+        nome: user.displayName || user.email?.split('@')[0] || '',
+        role: 'secretario',
+        ativo: true,
+      };
+
+      setUserProfile((prev) => prev ?? fallbackProfile);
+      setUserPermissions((prev) =>
+        prev.length > 0
+          ? prev
+          : ['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorios']
+      );
     }
   };
 
@@ -335,7 +352,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const hasAccess = (menuId: string): boolean => {
-    if (!userProfile) return false;
+    if (!user) return false;
     return userPermissions.includes(menuId);
   };
 
