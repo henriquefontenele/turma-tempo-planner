@@ -65,6 +65,12 @@ const menuGroups = [
       { id: 'notas', label: 'Notas', emoji: '📝' },
       { id: 'relatorios', label: 'Relatórios', emoji: '📊' },
     ]
+  },
+  {
+    label: 'FIDELIDADE',
+    items: [
+      { id: 'fidelidade', label: 'Programa', emoji: '🏆' },
+    ]
   }
 ];
 
