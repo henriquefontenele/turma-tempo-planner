@@ -45,12 +45,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
 
   const loadUserProfile = async (user: User) => {
+    let profileLoaded = false;
     try {
       console.log('🔍 Carregando perfil do usuário:', user.uid);
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const profile = userDoc.data() as UserProfile;
         setUserProfile(profile);
+        profileLoaded = true;
         console.log('👤 Perfil do usuário:', profile);
 
         // Normaliza o role para garantir correspondência correta (mantendo suporte a perfis customizados por ID)
@@ -300,9 +302,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.error('Erro ao carregar perfil do usuário:', error);
 
-      // Só aplica fallback se ainda não tiver perfil/permissões carregados
-      // Isso evita sobrescrever dados já carregados com sucesso
-      if (!userProfile && userPermissions.length === 0) {
+      // Só aplica fallback se o perfil NÃO foi carregado com sucesso nesta execução
+      if (!profileLoaded) {
         const fallbackProfile: UserProfile = {
           id: user.uid,
           email: user.email || '',
@@ -314,6 +315,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUserProfile(fallbackProfile);
         setUserPermissions(['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorios']);
         console.log('⚠️ Fallback aplicado devido a erro:', error);
+      } else {
+        console.log('⚠️ Erro nas permissões, mas perfil já carregado. Usando hasAccess para admin.');
       }
     }
   };
