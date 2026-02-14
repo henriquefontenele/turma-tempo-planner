@@ -25,6 +25,7 @@ import { ModulosEADTab } from '@/components/ModulosEADTab';
 import { AulasEADTab } from '@/components/AulasEADTab';
 import { MatriculasEADTab } from '@/components/MatriculasEADTab';
 import FidelidadeTab from '@/components/FidelidadeTab';
+import EventosTab from '@/components/EventosTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 
 // Mapeamento dos nomes das funcionalidades
@@ -48,7 +49,8 @@ const tabNames: Record<string, string> = {
   'modulos-ead': 'Módulos EAD',
   'aulas-ead': 'Aulas EAD',
   'matriculas-ead': 'Matrículas EAD',
-  'fidelidade': 'Programa de Fidelidade'
+  'fidelidade': 'Programa de Fidelidade',
+  'eventos': 'Eventos e Check-in',
 };
 
 export default function Index() {
@@ -324,6 +326,8 @@ export default function Index() {
         return <MatriculasEADTab />;
       case 'fidelidade':
         return <FidelidadeTab estudantes={estudantes} />;
+      case 'eventos':
+        return <EventosTab />;
       default:
         return (
           <Dashboard
