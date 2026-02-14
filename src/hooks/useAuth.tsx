@@ -352,6 +352,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const hasAccess = (menuId: string): boolean => {
     if (!user) return false;
+    // Administrador SEMPRE tem acesso total
+    const role = userProfile?.role?.toLowerCase?.() || '';
+    if (role === 'administrador' || role === 'admin') return true;
     return userPermissions.includes(menuId);
   };
 
