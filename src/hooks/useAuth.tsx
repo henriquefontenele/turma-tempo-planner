@@ -55,10 +55,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         profileLoaded = true;
         console.log('👤 Perfil do usuário:', profile);
 
-        // Normaliza o role para garantir correspondência correta (mantendo suporte a perfis customizados por ID)
+        // Normaliza o role para garantir correspondência correta
         const roleRaw = String(profile.role || '').trim();
         const roleLower = roleRaw.toLowerCase();
         console.log('🎭 Valor de role no perfil:', profile.role, '-> lower:', roleLower);
+
+        // ADMIN: acesso total imediato, sem depender de perfis-acesso
+        if (roleLower === 'administrador' || roleLower === 'admin') {
+          console.log('🔑 ADMIN detectado! Concedendo acesso total.');
+          const allMenus = ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorios','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','fidelidade'];
+          setUserPermissions(allMenus);
+          return; // Não precisa carregar perfis-acesso
+        }
         
         const roleMap: Record<string, UserRole> = {
           administrador: 'administrador',
