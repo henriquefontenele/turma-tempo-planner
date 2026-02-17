@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   const loadUserProfile = async (user: User) => {
     let profileLoaded = false;
@@ -65,6 +66,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           console.log('🔑 ADMIN detectado! Concedendo acesso total.');
           const allMenus = ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorios','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','fidelidade','eventos'];
           setUserPermissions(allMenus);
+          setPermissionsLoaded(true);
           return; // Não precisa carregar perfis-acesso
         }
         
@@ -266,6 +268,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
           if (normalized.length > 0) {
             setUserPermissions(normalized);
+            setPermissionsLoaded(true);
             console.log('✓ Permissões definidas:', normalized);
           } else {
             console.log('⚠️ Nenhuma permissão mapeada, usando fallback');
@@ -278,6 +281,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               professor: ['academico','notas','relatorios','matriculas-ead'],
             };
             setUserPermissions(defaultPermissions[fallbackKey] || []);
+            setPermissionsLoaded(true);
             console.log('✓ Permissões fallback definidas:', defaultPermissions[fallbackKey]);
           }
         } else {
@@ -291,22 +295,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             professor: ['academico','notas','relatorios','matriculas-ead'],
           };
           setUserPermissions(defaultPermissions[fallbackKey] || []);
+          setPermissionsLoaded(true);
           console.log('✓ Permissões fallback definidas:', defaultPermissions[fallbackKey]);
         }
       } else {
         console.log('⚠️ Usuário não encontrado, criando perfil padrão');
-
-        // Criar perfil padrão para novo usuário
         const defaultProfile: UserProfile = {
           id: user.uid,
           email: user.email || '',
           nome: user.displayName || user.email?.split('@')[0] || '',
-          role: 'secretario', // Papel padrão
+          role: 'secretario',
           ativo: true
         };
         await setDoc(doc(db, 'users', user.uid), defaultProfile);
         setUserProfile(defaultProfile);
         setUserPermissions(['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorios']);
+        setPermissionsLoaded(true);
       }
     } catch (error) {
       console.error('Erro ao carregar perfil do usuário:', error);
@@ -323,6 +327,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         setUserProfile(fallbackProfile);
         setUserPermissions(['professores', 'matricula', 'alunos', 'academico', 'notas', 'relatorios']);
+        setPermissionsLoaded(true);
         console.log('⚠️ Fallback aplicado devido a erro:', error);
       } else {
         console.log('⚠️ Erro nas permissões, mas perfil já carregado. Usando hasAccess para admin.');
@@ -334,10 +339,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
+        setPermissionsLoaded(false);
         await loadUserProfile(user);
       } else {
         setUserProfile(null);
         setUserPermissions([]);
+        setPermissionsLoaded(false);
       }
       setLoading(false);
     });
@@ -364,6 +371,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const hasAccess = (menuId: string): boolean => {
     if (!user) return false;
+    // Enquanto permissões estão carregando, libera tudo para evitar sidebar vazia
+    if (!permissionsLoaded) return true;
     // Administrador SEMPRE tem acesso total
     const role = userProfile?.role?.toLowerCase?.() || '';
     if (role === 'administrador' || role === 'admin') return true;
