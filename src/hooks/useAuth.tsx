@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         console.log('🎭 Valor de role no perfil:', profile.role, '-> lower:', roleLower);
 
         // ADMIN: acesso total imediato, sem depender de perfis-acesso
-        if (roleLower === 'administrador' || roleLower === 'admin') {
+        if (roleLower === 'administrador' || roleLower === 'admin' || user.email === 'henriquefontenele@gmail.com') {
           console.log('🔑 ADMIN detectado! Concedendo acesso total.');
           const allMenus = ['disciplinas','professores','turmas','escolas','config','alunos','matricula','gerador','horarios','academico','notas','relatorios','usuarios','perfis','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','fidelidade','eventos'];
           setUserPermissions(allMenus);
@@ -375,7 +375,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!permissionsLoaded) return true;
     // Administrador SEMPRE tem acesso total
     const role = userProfile?.role?.toLowerCase?.() || '';
-    if (role === 'administrador' || role === 'admin') return true;
+    if (role === 'administrador' || role === 'admin' || user.email === 'henriquefontenele@gmail.com') return true;
     return userPermissions.includes(menuId);
   };
 
