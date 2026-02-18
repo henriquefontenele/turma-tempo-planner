@@ -33,6 +33,8 @@ export interface Recompensa {
   quantidadeDisponivel: number;
   ativa: boolean;
   dataCriacao: string;
+  parceiroId?: string; // ID do parceiro comercial (se for oferta de parceiro)
+  parceiroNome?: string;
 }
 
 export interface PedidoResgate {
@@ -47,4 +49,7 @@ export interface PedidoResgate {
   dataPedido: string;
   dataProcessamento?: string;
   processadoPor?: string;
+  voucherCodigo?: string; // código do voucher gerado (se for parceiro)
+  parceiroId?: string;
+  parceiroNome?: string;
 }
