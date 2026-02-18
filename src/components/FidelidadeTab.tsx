@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins } from 'lucide-react';
+import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket } from 'lucide-react';
 import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate } from '@/types/fidelidade';
+import type { Parceiro, Voucher } from '@/types/parceiros';
 import type { Estudante } from '@/types';
 
 interface FidelidadeTabProps {
@@ -32,6 +33,10 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     useFirestoreCollection<Recompensa>('fidelidade_recompensas');
   const { data: pedidos, addItem: addPedido, updateItem: updatePedido } = 
     useFirestoreCollection<PedidoResgate>('fidelidade_pedidos');
+  const { data: parceiros } = 
+    useFirestoreCollection<Parceiro>('fidelidade_parceiros');
+  const { addItem: addVoucher } = 
+    useFirestoreCollection<Voucher>('fidelidade_vouchers');
 
   const [activeTab, setActiveTab] = useState('usuarios');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -60,7 +65,8 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     descricao: '',
     pontosNecessarios: 0,
     categoria: 'desconto' as Recompensa['categoria'],
-    quantidadeDisponivel: 0
+    quantidadeDisponivel: 0,
+    parceiroId: ''
   });
 
   const handleAddUsuario = async () => {
@@ -113,19 +119,29 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     toast({ title: 'Sucesso', description: `${creditoPontos.quantidade} pontos creditados com sucesso!` });
   };
 
+  const generateVoucherCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const block = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return `PRM-${block()}-${block()}`;
+  };
+
   const handleAddRecompensa = async () => {
     if (!novaRecompensa.nome || novaRecompensa.pontosNecessarios <= 0) {
       toast({ title: 'Erro', description: 'Nome e pontos necessários são obrigatórios', variant: 'destructive' });
       return;
     }
 
+    const parceiro = novaRecompensa.parceiroId ? parceiros.find(p => p.id === novaRecompensa.parceiroId) : null;
+
     await addRecompensa({
       ...novaRecompensa,
+      parceiroId: parceiro?.id,
+      parceiroNome: parceiro?.nome,
       ativa: true,
       dataCriacao: new Date().toISOString()
     });
 
-    setNovaRecompensa({ nome: '', descricao: '', pontosNecessarios: 0, categoria: 'desconto', quantidadeDisponivel: 0 });
+    setNovaRecompensa({ nome: '', descricao: '', pontosNecessarios: 0, categoria: 'desconto', quantidadeDisponivel: 0, parceiroId: '' });
     setRecompensaDialogOpen(false);
     toast({ title: 'Sucesso', description: 'Recompensa cadastrada com sucesso!' });
   };
@@ -134,11 +150,9 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     const usuario = usuarios.find(u => u.id === pedido.usuarioId);
     
     if (novoStatus === 'cancelado' && usuario) {
-      // Devolver pontos ao cancelar
       await updateUsuario(pedido.usuarioId, {
         saldoPontos: usuario.saldoPontos + pedido.pontosUtilizados
       });
-      
       await addTransacao({
         usuarioId: pedido.usuarioId,
         tipo: 'credito',
@@ -151,13 +165,40 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
       });
     }
 
+    // Gerar voucher ao aprovar resgate de parceiro
+    let voucherCodigo: string | undefined;
+    if (novoStatus === 'aprovado' && pedido.parceiroId) {
+      voucherCodigo = generateVoucherCode();
+      const recompensa = recompensas.find(r => r.id === pedido.recompensaId);
+      await addVoucher({
+        codigo: voucherCodigo,
+        pedidoResgateId: pedido.id,
+        usuarioId: pedido.usuarioId,
+        usuarioNome: pedido.usuarioNome,
+        parceiroId: pedido.parceiroId,
+        parceiroNome: pedido.parceiroNome || '',
+        recompensaId: pedido.recompensaId,
+        recompensaNome: pedido.recompensaNome,
+        recompensaDescricao: recompensa?.descricao || '',
+        pontosUtilizados: pedido.pontosUtilizados,
+        status: 'ativo',
+        dataCriacao: new Date().toISOString()
+      });
+    }
+
     await updatePedido(pedido.id, {
       status: novoStatus,
       dataProcessamento: new Date().toISOString(),
-      processadoPor: userProfile?.id
+      processadoPor: userProfile?.id,
+      ...(voucherCodigo ? { voucherCodigo } : {})
     });
 
-    toast({ title: 'Sucesso', description: `Pedido ${novoStatus === 'aprovado' ? 'aprovado' : novoStatus === 'entregue' ? 'marcado como entregue' : 'cancelado'}!` });
+    toast({ 
+      title: 'Sucesso', 
+      description: novoStatus === 'aprovado' && voucherCodigo
+        ? `Pedido aprovado! Voucher gerado: ${voucherCodigo}`
+        : `Pedido ${novoStatus === 'aprovado' ? 'aprovado' : novoStatus === 'entregue' ? 'marcado como entregue' : 'cancelado'}!`
+    });
   };
 
   const getStatusBadge = (status: PedidoResgate['status']) => {
@@ -548,6 +589,26 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                     onChange={e => setNovaRecompensa({...novaRecompensa, quantidadeDisponivel: parseInt(e.target.value) || 0})}
                   />
                 </div>
+                <div>
+                  <Label>Parceiro Comercial (opcional)</Label>
+                  <Select
+                    value={novaRecompensa.parceiroId || 'none'}
+                    onValueChange={(value) => setNovaRecompensa({
+                      ...novaRecompensa,
+                      parceiroId: value === 'none' ? '' : value
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nenhum (recompensa da escola)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum (recompensa da escola)</SelectItem>
+                      {parceiros.filter(p => p.ativo).map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRecompensaDialogOpen(false)}>Cancelar</Button>
@@ -573,7 +634,15 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                         {recompensa.ativa ? 'Ativa' : 'Inativa'}
                       </Badge>
                     </div>
-                    <CardDescription>{recompensa.descricao || 'Sem descrição'}</CardDescription>
+                    <CardDescription>
+                      {recompensa.descricao || 'Sem descrição'}
+                      {recompensa.parceiroNome && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          <Store className="w-3 h-3 mr-1" />
+                          {recompensa.parceiroNome}
+                        </Badge>
+                      )}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-center">
@@ -623,6 +692,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                     <TableHead>Usuário</TableHead>
                     <TableHead>Recompensa</TableHead>
                     <TableHead className="text-right">Pontos</TableHead>
+                    <TableHead>Voucher</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Ações</TableHead>
                   </TableRow>
@@ -630,7 +700,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                 <TableBody>
                   {pedidos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-gray-500">
+                      <TableCell colSpan={7} className="text-center text-gray-500">
                         Nenhum pedido de resgate
                       </TableCell>
                     </TableRow>
@@ -643,8 +713,16 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                             {new Date(pedido.dataPedido).toLocaleDateString('pt-BR')}
                           </TableCell>
                           <TableCell className="font-medium">{pedido.usuarioNome}</TableCell>
-                          <TableCell>{pedido.recompensaNome}</TableCell>
+                          <TableCell>
+                            {pedido.recompensaNome}
+                            {pedido.parceiroNome && <Badge variant="outline" className="ml-1 text-xs"><Store className="w-3 h-3 mr-1" />{pedido.parceiroNome}</Badge>}
+                          </TableCell>
                           <TableCell className="text-right">{pedido.pontosUtilizados} pts</TableCell>
+                          <TableCell>
+                            {pedido.voucherCodigo ? (
+                              <code className="font-mono text-xs font-bold bg-muted px-2 py-1 rounded">{pedido.voucherCodigo}</code>
+                            ) : '-'}
+                          </TableCell>
                           <TableCell>{getStatusBadge(pedido.status)}</TableCell>
                           <TableCell>
                             {pedido.status === 'pendente' && (

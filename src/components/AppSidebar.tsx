@@ -70,6 +70,7 @@ const menuGroups = [
     label: 'FIDELIDADE',
     items: [
       { id: 'fidelidade', label: 'Programa', emoji: '🏆' },
+      { id: 'parceiros', label: 'Parceiros', emoji: '🤝' },
       { id: 'eventos', label: 'Eventos', emoji: '📅' },
     ]
   }
