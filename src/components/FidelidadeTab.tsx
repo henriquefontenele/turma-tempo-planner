@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { Switch } from '@/components/ui/switch';
+import { useFirestoreCollection, useFirestoreDoc } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket } from 'lucide-react';
-import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate } from '@/types/fidelidade';
+import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket, Settings, AlertTriangle, Timer } from 'lucide-react';
+import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate, ConfiguracaoFidelidade } from '@/types/fidelidade';
 import type { Parceiro, Voucher } from '@/types/parceiros';
 import type { Estudante } from '@/types';
 
@@ -37,6 +38,13 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     useFirestoreCollection<Parceiro>('fidelidade_parceiros');
   const { addItem: addVoucher } = 
     useFirestoreCollection<Voucher>('fidelidade_vouchers');
+  const { data: configFidelidade, updateData: setConfigFidelidade } = 
+    useFirestoreDoc<ConfiguracaoFidelidade>('fidelidade_config', {
+      id: 'config',
+      validadePontosMeses: 12,
+      diasAlertaExpiracao: 30,
+      expiracoesAtivadas: false,
+    });
 
   const [activeTab, setActiveTab] = useState('usuarios');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -224,9 +232,159 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
       pontualidade: 'Pontualidade',
       resgate: 'Resgate',
       bonus: 'Bônus',
+      expiracao: 'Expiração',
       outro: 'Outro'
     };
     return labels[categoria];
+  };
+
+  // === Lógica de Expiração de Pontos ===
+  const verificarExpiracaoPontos = useCallback(async () => {
+    if (!configFidelidade.expiracoesAtivadas || configFidelidade.validadePontosMeses <= 0) return;
+
+    const agora = new Date();
+    const hoje = agora.toISOString().split('T')[0];
+
+    // Evitar rodar mais de uma vez por dia
+    if (configFidelidade.ultimaVerificacaoExpiracao?.startsWith(hoje)) return;
+
+    const limiteExpiracao = new Date();
+    limiteExpiracao.setMonth(limiteExpiracao.getMonth() - configFidelidade.validadePontosMeses);
+
+    // Buscar transações de crédito que expiraram
+    const transacoesCredito = transacoes.filter(t => 
+      t.tipo === 'credito' && 
+      t.categoria !== 'expiracao' &&
+      new Date(t.dataCriacao) < limiteExpiracao
+    );
+
+    // Agrupar pontos expirados por usuário
+    const pontosExpiradosPorUsuario: Record<string, number> = {};
+    
+    // Verificar quais créditos ainda não foram expirados (sem transação de expiração correspondente)
+    for (const transacao of transacoesCredito) {
+      const jaExpirado = transacoes.some(t => 
+        t.tipo === 'debito' && 
+        t.categoria === 'expiracao' && 
+        t.referenciaId === transacao.id
+      );
+      if (!jaExpirado) {
+        pontosExpiradosPorUsuario[transacao.usuarioId] = 
+          (pontosExpiradosPorUsuario[transacao.usuarioId] || 0) + transacao.quantidade;
+      }
+    }
+
+    // Processar expiração
+    for (const [usuarioId, pontosExpirados] of Object.entries(pontosExpiradosPorUsuario)) {
+      if (pontosExpirados <= 0) continue;
+      
+      const usuario = usuarios.find(u => u.id === usuarioId);
+      if (!usuario) continue;
+
+      const pontosReaisExpirados = Math.min(pontosExpirados, usuario.saldoPontos);
+      if (pontosReaisExpirados <= 0) continue;
+
+      // Criar transação de débito
+      await addTransacao({
+        usuarioId,
+        tipo: 'debito',
+        quantidade: pontosReaisExpirados,
+        descricao: `Pontos expirados (validade de ${configFidelidade.validadePontosMeses} meses)`,
+        categoria: 'expiracao',
+        referenciaId: `exp_${hoje}_${usuarioId}`,
+        criadoPor: 'sistema',
+        dataCriacao: agora.toISOString()
+      });
+
+      // Atualizar saldo
+      await updateUsuario(usuarioId, {
+        saldoPontos: usuario.saldoPontos - pontosReaisExpirados
+      });
+    }
+
+    // Atualizar data da última verificação
+    await setConfigFidelidade({
+      ...configFidelidade,
+      ultimaVerificacaoExpiracao: agora.toISOString()
+    });
+
+    const totalExpirados = Object.values(pontosExpiradosPorUsuario).reduce((a, b) => a + b, 0);
+    if (totalExpirados > 0) {
+      toast({ 
+        title: 'Expiração de Pontos', 
+        description: `${totalExpirados} pontos foram expirados automaticamente.`
+      });
+    }
+  }, [configFidelidade, transacoes, usuarios, addTransacao, updateUsuario, setConfigFidelidade, toast]);
+
+  // Rodar verificação de expiração ao carregar
+  useEffect(() => {
+    if (usuarios.length > 0 && transacoes.length >= 0 && configFidelidade.expiracoesAtivadas) {
+      verificarExpiracaoPontos();
+    }
+  }, [usuarios.length, transacoes.length, configFidelidade.expiracoesAtivadas]);
+
+  // Calcular pontos próximos de expirar (para alerta visual)
+  const pontosProximosExpiracao = useCallback(() => {
+    if (!configFidelidade.expiracoesAtivadas || configFidelidade.validadePontosMeses <= 0) return [];
+
+    const alertaData = new Date();
+    alertaData.setMonth(alertaData.getMonth() - configFidelidade.validadePontosMeses);
+    alertaData.setDate(alertaData.getDate() + configFidelidade.diasAlertaExpiracao);
+
+    const limiteExpiracao = new Date();
+    limiteExpiracao.setMonth(limiteExpiracao.getMonth() - configFidelidade.validadePontosMeses);
+
+    const alertas: { usuarioId: string; usuarioNome: string; pontosAExpirar: number; dataExpiracao: Date }[] = [];
+
+    // Transações de crédito que vão expirar nos próximos X dias
+    const transacoesEmRisco = transacoes.filter(t =>
+      t.tipo === 'credito' &&
+      t.categoria !== 'expiracao' &&
+      new Date(t.dataCriacao) < alertaData &&
+      new Date(t.dataCriacao) >= limiteExpiracao
+    );
+
+    const porUsuario: Record<string, { pontos: number; dataExpiracao: Date }> = {};
+    for (const t of transacoesEmRisco) {
+      const jaExpirado = transacoes.some(tx => 
+        tx.tipo === 'debito' && tx.categoria === 'expiracao' && tx.referenciaId === t.id
+      );
+      if (jaExpirado) continue;
+
+      const dataExp = new Date(t.dataCriacao);
+      dataExp.setMonth(dataExp.getMonth() + configFidelidade.validadePontosMeses);
+
+      if (!porUsuario[t.usuarioId]) {
+        porUsuario[t.usuarioId] = { pontos: 0, dataExpiracao: dataExp };
+      }
+      porUsuario[t.usuarioId].pontos += t.quantidade;
+      if (dataExp < porUsuario[t.usuarioId].dataExpiracao) {
+        porUsuario[t.usuarioId].dataExpiracao = dataExp;
+      }
+    }
+
+    for (const [usuarioId, info] of Object.entries(porUsuario)) {
+      const usuario = usuarios.find(u => u.id === usuarioId);
+      if (usuario && info.pontos > 0) {
+        alertas.push({
+          usuarioId,
+          usuarioNome: usuario.nome,
+          pontosAExpirar: info.pontos,
+          dataExpiracao: info.dataExpiracao
+        });
+      }
+    }
+
+    return alertas;
+  }, [configFidelidade, transacoes, usuarios]);
+
+  const alertasExpiracao = pontosProximosExpiracao();
+
+  // Handler para salvar configurações de fidelidade
+  const handleSalvarConfigFidelidade = async () => {
+    await setConfigFidelidade(configFidelidade);
+    toast({ title: 'Sucesso', description: 'Configurações do programa de fidelidade salvas!' });
   };
 
   // Estatísticas
@@ -300,9 +458,31 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
         </Card>
       </div>
 
+      {/* Alerta de Pontos a Expirar */}
+      {alertasExpiracao.length > 0 && (
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="font-semibold text-yellow-800">Pontos próximos de expirar!</p>
+                <ul className="mt-1 space-y-1">
+                  {alertasExpiracao.map(a => (
+                    <li key={a.usuarioId} className="text-sm text-yellow-700">
+                      <strong>{a.usuarioNome}</strong>: {a.pontosAExpirar} pontos expiram em{' '}
+                      {a.dataExpiracao.toLocaleDateString('pt-BR')}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+        <TabsList className="grid grid-cols-5 w-full max-w-3xl">
           <TabsTrigger value="usuarios" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Usuários
@@ -318,6 +498,10 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
           <TabsTrigger value="extrato" className="flex items-center gap-2">
             <History className="w-4 h-4" />
             Extrato
+          </TabsTrigger>
+          <TabsTrigger value="configuracoes" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Config
           </TabsTrigger>
         </TabsList>
 
@@ -816,6 +1000,122 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Tab Configurações */}
+        <TabsContent value="configuracoes" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Timer className="w-5 h-5" />
+                Regras de Expiração de Pontos
+              </CardTitle>
+              <CardDescription>
+                Defina as regras de validade dos pontos para manter o programa sustentável
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between p-4 rounded-lg border">
+                <div>
+                  <Label className="text-base font-medium">Ativar Expiração de Pontos</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Quando ativado, os pontos expiram após o período definido
+                  </p>
+                </div>
+                <Switch
+                  checked={configFidelidade.expiracoesAtivadas}
+                  onCheckedChange={(checked) => setConfigFidelidade({
+                    ...configFidelidade,
+                    expiracoesAtivadas: checked
+                  })}
+                />
+              </div>
+
+              {configFidelidade.expiracoesAtivadas && (
+                <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Validade dos Pontos (meses)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={configFidelidade.validadePontosMeses}
+                        onChange={(e) => setConfigFidelidade({
+                          ...configFidelidade,
+                          validadePontosMeses: parseInt(e.target.value) || 12
+                        })}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Pontos creditados há mais de {configFidelidade.validadePontosMeses} meses serão expirados
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Alerta de Expiração (dias antes)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={configFidelidade.diasAlertaExpiracao}
+                        onChange={(e) => setConfigFidelidade({
+                          ...configFidelidade,
+                          diasAlertaExpiracao: parseInt(e.target.value) || 30
+                        })}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Aviso visual será exibido {configFidelidade.diasAlertaExpiracao} dias antes da expiração
+                      </p>
+                    </div>
+                  </div>
+
+                  {configFidelidade.ultimaVerificacaoExpiracao && (
+                    <p className="text-sm text-muted-foreground">
+                      Última verificação automática:{' '}
+                      {new Date(configFidelidade.ultimaVerificacaoExpiracao).toLocaleString('pt-BR')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <Button onClick={handleSalvarConfigFidelidade}>
+                Salvar Configurações
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Alertas atuais */}
+          {alertasExpiracao.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-yellow-700">
+                  <AlertTriangle className="w-5 h-5" />
+                  Pontos Próximos de Expirar ({alertasExpiracao.length} usuários)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead className="text-right">Pontos a Expirar</TableHead>
+                      <TableHead>Data de Expiração</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {alertasExpiracao.map(a => (
+                      <TableRow key={a.usuarioId}>
+                        <TableCell className="font-medium">{a.usuarioNome}</TableCell>
+                        <TableCell className="text-right font-bold text-yellow-600">
+                          {a.pontosAExpirar} pts
+                        </TableCell>
+                        <TableCell>{a.dataExpiracao.toLocaleDateString('pt-BR')}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

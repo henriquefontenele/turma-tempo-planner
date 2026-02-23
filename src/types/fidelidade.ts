@@ -17,10 +17,18 @@ export interface TransacaoPontos {
   tipo: 'credito' | 'debito';
   quantidade: number;
   descricao: string;
-  categoria: 'participacao' | 'indicacao' | 'pontualidade' | 'resgate' | 'bonus' | 'outro';
+  categoria: 'participacao' | 'indicacao' | 'pontualidade' | 'resgate' | 'bonus' | 'expiracao' | 'outro';
   referenciaId?: string; // ID do resgate ou evento relacionado
   criadoPor: string; // ID do admin que criou
   dataCriacao: string;
+}
+
+export interface ConfiguracaoFidelidade {
+  id: string;
+  validadePontosMeses: number; // 0 = sem expiração
+  diasAlertaExpiracao: number; // dias antes de expirar para alertar (ex: 30)
+  expiracoesAtivadas: boolean;
+  ultimaVerificacaoExpiracao?: string; // ISO date da última verificação automática
 }
 
 export interface Recompensa {
