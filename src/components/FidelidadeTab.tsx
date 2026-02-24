@@ -13,7 +13,11 @@ import { Switch } from '@/components/ui/switch';
 import { useFirestoreCollection, useFirestoreDoc } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket, Settings, AlertTriangle, Timer } from 'lucide-react';
+import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket, Settings, AlertTriangle, Timer, Search, Filter, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate, ConfiguracaoFidelidade } from '@/types/fidelidade';
 import type { Parceiro, Voucher } from '@/types/parceiros';
 import type { Estudante } from '@/types';
@@ -51,6 +55,15 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
   const [creditarDialogOpen, setCreditarDialogOpen] = useState(false);
   const [recompensaDialogOpen, setRecompensaDialogOpen] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState<UsuarioFidelidade | null>(null);
+
+  // Extrato filters & pagination
+  const [extratoFiltroTipo, setExtratoFiltroTipo] = useState<'todos' | 'credito' | 'debito'>('todos');
+  const [extratoFiltroCategoria, setExtratoFiltroCategoria] = useState<string>('todas');
+  const [extratoDataInicio, setExtratoDataInicio] = useState<Date | undefined>(undefined);
+  const [extratoDataFim, setExtratoDataFim] = useState<Date | undefined>(undefined);
+  const [extratoUsuarioFiltro, setExtratoUsuarioFiltro] = useState<string>('todos');
+  const [extratoPagina, setExtratoPagina] = useState(1);
+  const extratoPorPagina = 15;
 
   // Form states
   const [novoUsuario, setNovoUsuario] = useState({
@@ -945,59 +958,267 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
           </Card>
         </TabsContent>
 
-        {/* Tab Extrato */}
+        {/* Tab Extrato Detalhado */}
         <TabsContent value="extrato" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Extrato de Transações</CardTitle>
-              <CardDescription>Histórico completo de movimentações de pontos</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Extrato Detalhado de Transações
+              </CardTitle>
+              <CardDescription>Histórico completo com filtros e paginação</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="text-right">Pontos</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transacoes.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-gray-500">
-                        Nenhuma transação registrada
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    transacoes
-                      .sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime())
-                      .map(transacao => {
-                        const usuario = usuarios.find(u => u.id === transacao.usuarioId);
-                        return (
-                          <TableRow key={transacao.id}>
-                            <TableCell>
-                              {new Date(transacao.dataCriacao).toLocaleDateString('pt-BR')}
-                            </TableCell>
-                            <TableCell className="font-medium">{usuario?.nome || 'Usuário não encontrado'}</TableCell>
-                            <TableCell>
-                              <Badge variant={transacao.tipo === 'credito' ? 'default' : 'secondary'}>
-                                {transacao.tipo === 'credito' ? 'Crédito' : 'Débito'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{getCategoriaLabel(transacao.categoria)}</TableCell>
-                            <TableCell className="max-w-xs truncate">{transacao.descricao}</TableCell>
-                            <TableCell className={`text-right font-bold ${transacao.tipo === 'credito' ? 'text-green-600' : 'text-red-600'}`}>
-                              {transacao.tipo === 'credito' ? '+' : '-'}{transacao.quantidade}
+            <CardContent className="space-y-4">
+              {/* Filtros */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 p-4 rounded-lg border bg-muted/30">
+                <div>
+                  <Label className="text-xs mb-1 block">Usuário</Label>
+                  <Select value={extratoUsuarioFiltro} onValueChange={(v) => { setExtratoUsuarioFiltro(v); setExtratoPagina(1); }}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os usuários</SelectItem>
+                      {usuarios.map(u => (
+                        <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Tipo</Label>
+                  <Select value={extratoFiltroTipo} onValueChange={(v: 'todos' | 'credito' | 'debito') => { setExtratoFiltroTipo(v); setExtratoPagina(1); }}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="credito">Ganhos (Crédito)</SelectItem>
+                      <SelectItem value="debito">Resgates/Débito</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Categoria</Label>
+                  <Select value={extratoFiltroCategoria} onValueChange={(v) => { setExtratoFiltroCategoria(v); setExtratoPagina(1); }}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas</SelectItem>
+                      <SelectItem value="participacao">Participação</SelectItem>
+                      <SelectItem value="indicacao">Indicação</SelectItem>
+                      <SelectItem value="pontualidade">Pontualidade</SelectItem>
+                      <SelectItem value="resgate">Resgate</SelectItem>
+                      <SelectItem value="bonus">Bônus</SelectItem>
+                      <SelectItem value="expiracao">Expiração</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Data Início</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full h-9 justify-start text-left font-normal text-sm">
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {extratoDataInicio ? format(extratoDataInicio, 'dd/MM/yyyy') : 'Selecionar'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={extratoDataInicio}
+                        onSelect={(d) => { setExtratoDataInicio(d); setExtratoPagina(1); }}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Data Fim</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full h-9 justify-start text-left font-normal text-sm">
+                        <CalendarIcon className="mr-2 h-3 w-3" />
+                        {extratoDataFim ? format(extratoDataFim, 'dd/MM/yyyy') : 'Selecionar'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={extratoDataFim}
+                        onSelect={(d) => { setExtratoDataFim(d); setExtratoPagina(1); }}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Botão limpar filtros */}
+              {(extratoFiltroTipo !== 'todos' || extratoFiltroCategoria !== 'todas' || extratoDataInicio || extratoDataFim || extratoUsuarioFiltro !== 'todos') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setExtratoFiltroTipo('todos');
+                    setExtratoFiltroCategoria('todas');
+                    setExtratoDataInicio(undefined);
+                    setExtratoDataFim(undefined);
+                    setExtratoUsuarioFiltro('todos');
+                    setExtratoPagina(1);
+                  }}
+                >
+                  <XCircle className="w-4 h-4 mr-1" /> Limpar Filtros
+                </Button>
+              )}
+
+              {/* Tabela com dados filtrados e paginados */}
+              {(() => {
+                let filtradas = [...transacoes];
+                
+                if (extratoUsuarioFiltro !== 'todos') {
+                  filtradas = filtradas.filter(t => t.usuarioId === extratoUsuarioFiltro);
+                }
+                if (extratoFiltroTipo !== 'todos') {
+                  filtradas = filtradas.filter(t => t.tipo === extratoFiltroTipo);
+                }
+                if (extratoFiltroCategoria !== 'todas') {
+                  filtradas = filtradas.filter(t => t.categoria === extratoFiltroCategoria);
+                }
+                if (extratoDataInicio) {
+                  const inicio = new Date(extratoDataInicio);
+                  inicio.setHours(0, 0, 0, 0);
+                  filtradas = filtradas.filter(t => new Date(t.dataCriacao) >= inicio);
+                }
+                if (extratoDataFim) {
+                  const fim = new Date(extratoDataFim);
+                  fim.setHours(23, 59, 59, 999);
+                  filtradas = filtradas.filter(t => new Date(t.dataCriacao) <= fim);
+                }
+
+                filtradas.sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime());
+
+                const totalFiltradas = filtradas.length;
+                const totalPaginas = Math.max(1, Math.ceil(totalFiltradas / extratoPorPagina));
+                const paginaAtual = Math.min(extratoPagina, totalPaginas);
+                const inicio = (paginaAtual - 1) * extratoPorPagina;
+                const paginadas = filtradas.slice(inicio, inicio + extratoPorPagina);
+
+                const totalCreditos = filtradas.filter(t => t.tipo === 'credito').reduce((s, t) => s + t.quantidade, 0);
+                const totalDebitos = filtradas.filter(t => t.tipo === 'debito').reduce((s, t) => s + t.quantidade, 0);
+
+                return (
+                  <>
+                    {/* Resumo */}
+                    <div className="flex gap-4 text-sm">
+                      <span className="text-muted-foreground">{totalFiltradas} transações encontradas</span>
+                      <span className="text-green-600 font-medium">+{totalCreditos.toLocaleString()} pts ganhos</span>
+                      <span className="text-red-600 font-medium">-{totalDebitos.toLocaleString()} pts gastos</span>
+                    </div>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Usuário</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Categoria</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead className="text-right">Pontos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginadas.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                              Nenhuma transação encontrada com os filtros selecionados
                             </TableCell>
                           </TableRow>
-                        );
-                      })
-                  )}
-                </TableBody>
-              </Table>
+                        ) : (
+                          paginadas.map(transacao => {
+                            const usuario = usuarios.find(u => u.id === transacao.usuarioId);
+                            return (
+                              <TableRow key={transacao.id}>
+                                <TableCell className="whitespace-nowrap">
+                                  {new Date(transacao.dataCriacao).toLocaleDateString('pt-BR')}
+                                  <span className="block text-xs text-muted-foreground">
+                                    {new Date(transacao.dataCriacao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="font-medium">{usuario?.nome || 'Usuário não encontrado'}</TableCell>
+                                <TableCell>
+                                  <Badge variant={transacao.tipo === 'credito' ? 'default' : 'secondary'}>
+                                    {transacao.tipo === 'credito' ? 'Crédito' : 'Débito'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{getCategoriaLabel(transacao.categoria)}</TableCell>
+                                <TableCell className="max-w-xs truncate">{transacao.descricao}</TableCell>
+                                <TableCell className={`text-right font-bold ${transacao.tipo === 'credito' ? 'text-green-600' : 'text-red-600'}`}>
+                                  {transacao.tipo === 'credito' ? '+' : '-'}{transacao.quantidade}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {/* Paginação */}
+                    {totalPaginas > 1 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-sm text-muted-foreground">
+                          Página {paginaAtual} de {totalPaginas}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={paginaAtual <= 1}
+                            onClick={() => setExtratoPagina(p => Math.max(1, p - 1))}
+                          >
+                            <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+                          </Button>
+                          {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+                            let pageNum: number;
+                            if (totalPaginas <= 5) {
+                              pageNum = i + 1;
+                            } else if (paginaAtual <= 3) {
+                              pageNum = i + 1;
+                            } else if (paginaAtual >= totalPaginas - 2) {
+                              pageNum = totalPaginas - 4 + i;
+                            } else {
+                              pageNum = paginaAtual - 2 + i;
+                            }
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={pageNum === paginaAtual ? 'default' : 'outline'}
+                                size="sm"
+                                className="w-9"
+                                onClick={() => setExtratoPagina(pageNum)}
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={paginaAtual >= totalPaginas}
+                            onClick={() => setExtratoPagina(p => Math.min(totalPaginas, p + 1))}
+                          >
+                            Próximo <ChevronRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
