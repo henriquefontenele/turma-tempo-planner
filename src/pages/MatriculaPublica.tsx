@@ -294,15 +294,11 @@ const MatriculaPublica = () => {
                       )}
                     </SelectContent>
                   </Select>
-                  {/* Debug info visible only during development */}
                   {escolasError && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Debug: Erro ao carregar: {escolasError}
+                    <p className="text-xs text-destructive mt-1">
+                      Não foi possível carregar as escolas. Tente novamente mais tarde.
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Debug: {escolas.length} escolas encontradas, {escolasAtivas.length} ativas
-                  </p>
                 </div>
 
               {/* Seleção de Turma */}
