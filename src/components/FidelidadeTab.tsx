@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { useFirestoreCollection, useFirestoreDoc } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket, Settings, AlertTriangle, Timer, Search, Filter, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket, Settings, AlertTriangle, Timer, Search, Filter, ChevronLeft, ChevronRight, CalendarIcon, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
@@ -21,6 +21,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate, ConfiguracaoFidelidade } from '@/types/fidelidade';
 import type { Parceiro, Voucher } from '@/types/parceiros';
 import type { Estudante } from '@/types';
+import type { Evento, CheckinEvento } from '@/types/eventos';
+import FidelidadeDashboard from './FidelidadeDashboard';
 
 interface FidelidadeTabProps {
   estudantes: Estudante[];
@@ -49,8 +51,10 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
       diasAlertaExpiracao: 30,
       expiracoesAtivadas: false,
     });
+  const { data: eventosData } = useFirestoreCollection<Evento>('fidelidade_eventos');
+  const { data: checkinsData } = useFirestoreCollection<CheckinEvento>('fidelidade_checkins');
 
-  const [activeTab, setActiveTab] = useState('usuarios');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creditarDialogOpen, setCreditarDialogOpen] = useState(false);
   const [recompensaDialogOpen, setRecompensaDialogOpen] = useState(false);
@@ -495,7 +499,11 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 w-full max-w-3xl">
+        <TabsList className="grid grid-cols-6 w-full max-w-4xl">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Dashboard
+          </TabsTrigger>
           <TabsTrigger value="usuarios" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Usuários
@@ -517,6 +525,18 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
             Config
           </TabsTrigger>
         </TabsList>
+
+        {/* Tab Dashboard */}
+        <TabsContent value="dashboard">
+          <FidelidadeDashboard
+            usuarios={usuarios}
+            transacoes={transacoes}
+            recompensas={recompensas}
+            pedidos={pedidos}
+            eventos={eventosData}
+            checkins={checkinsData}
+          />
+        </TabsContent>
 
         {/* Tab Usuários */}
         <TabsContent value="usuarios" className="space-y-4">
