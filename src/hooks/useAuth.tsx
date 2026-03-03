@@ -371,11 +371,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const hasAccess = (menuId: string): boolean => {
     if (!user) return false;
-    // Enquanto permissões estão carregando, libera tudo para evitar sidebar vazia
-    if (!permissionsLoaded) return true;
+    // While permissions are loading, deny access (show loading state instead)
+    if (!permissionsLoaded) return false;
     // Administrador SEMPRE tem acesso total
     const role = userProfile?.role?.toLowerCase?.() || '';
-    if (role === 'administrador' || role === 'admin' || user.email === 'henriquefontenele@gmail.com') return true;
+    if (role === 'administrador' || role === 'admin') return true;
     return userPermissions.includes(menuId);
   };
 

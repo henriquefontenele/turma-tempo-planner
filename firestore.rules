@@ -1,0 +1,206 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────
+    // Helper: check if authenticated user has a specific role
+    // ──────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() in ['administrador', 'admin'];
+    }
+
+    function isStaff() {
+      return isAuthenticated() && getUserRole() in ['administrador', 'admin', 'diretor', 'secretario', 'coordenador'];
+    }
+
+    // ──────────────────────────────────────────────
+    // User profiles – owner or admin
+    // ──────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────
+    // Access profiles – read for authenticated, write for admin
+    // ──────────────────────────────────────────────
+    match /perfis-acesso/{perfilId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────
+    // Schools – public read (needed for public enrollment), staff write
+    // ──────────────────────────────────────────────
+    match /escolas/{escolaId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Classes/Turmas – public read (needed for enrollment), staff write
+    // ──────────────────────────────────────────────
+    match /turmas/{turmaId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────
+    // Students – contains PII (CPF, address, guardian info)
+    // ──────────────────────────────────────────────
+    match /estudantes/{estudanteId} {
+      allow read: if isAuthenticated() && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      allow create: if isAuthenticated(); // anonymous can create during enrollment
+      allow update, delete: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Enrollments – authenticated create, staff manage
+    // ──────────────────────────────────────────────
+    match /matriculas/{matriculaId} {
+      allow read: if isAuthenticated() && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      allow create: if isAuthenticated(); // anonymous can create during enrollment
+      allow update, delete: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Disciplines
+    // ──────────────────────────────────────────────
+    match /disciplinas/{disciplinaId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Teachers
+    // ──────────────────────────────────────────────
+    match /professores/{professorId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Academic records (grades, attendance)
+    // ──────────────────────────────────────────────
+    match /academico/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /notas/{notaId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Loyalty program
+    // ──────────────────────────────────────────────
+    match /fidelidade_usuarios/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /fidelidade_transacoes/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /fidelidade_recompensas/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /fidelidade_resgates/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /fidelidade_eventos/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /fidelidade_checkins/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Events – public read for check-in page, staff write
+    // ──────────────────────────────────────────────
+    match /eventos/{eventoId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /checkins-eventos/{checkinId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // anonymous can check in
+      allow update, delete: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // EAD (online courses)
+    // ──────────────────────────────────────────────
+    match /cursosEAD/{cursoId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /modulosEAD/{moduloId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /aulasEAD/{aulaId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /matriculasEAD/{matriculaId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Partners
+    // ──────────────────────────────────────────────
+    match /parceiros/{parceiroId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // Schedules / Horarios
+    // ──────────────────────────────────────────────
+    match /horarios/{horarioId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    // ──────────────────────────────────────────────
+    // User sub-collections (settings, configs)
+    // ──────────────────────────────────────────────
+    match /users/{userId}/{subCollection}/{docId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ──────────────────────────────────────────────
+    // Default: deny everything else
+    // ──────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
