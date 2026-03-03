@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, userProfile } = useAuth();
 
   if (loading) {
     return (
@@ -22,6 +22,11 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user) {
+    return <Login />;
+  }
+
+  // Force password reset before allowing access
+  if (userProfile?.mustResetPassword) {
     return <Login />;
   }
 

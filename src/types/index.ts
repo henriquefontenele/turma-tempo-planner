@@ -148,6 +148,7 @@ export interface UserProfile {
   role: UserRole;
   escolaIds?: string[];
   ativo: boolean;
+  mustResetPassword?: boolean;
 }
 
 export type Permissao = 

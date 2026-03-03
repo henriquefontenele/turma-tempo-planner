@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { createUserWithoutSignIn } from '@/lib/firebaseSecondary';
 import { useAuth } from '@/hooks/useAuth';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ export function UsuariosTab() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
@@ -83,6 +85,7 @@ export function UsuariosTab() {
 
   const handleAddUser = () => {
     setIsCreating(true);
+    setNewPassword('');
     setEditingUser({
       id: '',
       nome: '',
@@ -146,22 +149,39 @@ export function UsuariosTab() {
           return;
         }
 
-        // Criar novo usuário
+        if (!newPassword || newPassword.length < 6) {
+          toast({
+            title: "Erro",
+            description: "A senha deve ter no mínimo 6 caracteres.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Criar usuário no Firebase Auth via secondary app (não desloga o admin)
+        const firebaseUser = await createUserWithoutSignIn(
+          editingUser.email.trim().toLowerCase(),
+          newPassword
+        );
+
+        // Criar documento do usuário no Firestore com o UID do Firebase Auth
         const userData: any = {
+          id: firebaseUser.uid,
           nome: editingUser.nome.trim(),
           email: editingUser.email.trim().toLowerCase(),
           role: editingUser.role,
           ativo: editingUser.ativo,
-          escolaIds: editingUser.escolaIds || []
+          escolaIds: editingUser.escolaIds || [],
+          mustResetPassword: true,
         };
 
-        const docRef = await addDoc(collection(db, 'users'), userData);
-        const newUser = { ...userData, id: docRef.id };
+        await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+        const newUser = { ...userData };
         setUsuarios([...usuarios, newUser]);
 
         toast({
           title: "Sucesso",
-          description: "Usuário criado com sucesso.",
+          description: "Usuário criado com sucesso. Ele precisará redefinir a senha no primeiro login.",
         });
       } else {
         // Atualizar usuário existente
@@ -429,6 +449,23 @@ export function UsuariosTab() {
                   placeholder="usuario@email.com"
                 />
               </div>
+
+              {isCreating && (
+                <div>
+                  <Label htmlFor="password">Senha Inicial</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    minLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O usuário será obrigado a redefinir a senha no primeiro login.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="role">Perfil de Acesso</Label>
