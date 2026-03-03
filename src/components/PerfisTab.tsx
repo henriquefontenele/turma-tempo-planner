@@ -64,6 +64,23 @@ const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; labe
     permissoes: [
       { id: 'acessar_relatorios', label: 'Acessar relatórios' },
     ]
+  },
+  {
+    grupo: 'EAD',
+    permissoes: [
+      { id: 'gerenciar_cursos_ead', label: 'Gerenciar cursos EAD' },
+      { id: 'gerenciar_modulos_ead', label: 'Gerenciar módulos EAD' },
+      { id: 'gerenciar_aulas_ead', label: 'Gerenciar aulas EAD' },
+      { id: 'gerenciar_matriculas_ead', label: 'Gerenciar matrículas EAD' },
+      { id: 'acessar_relatorios_ead', label: 'Acessar relatórios EAD' },
+    ]
+  },
+  {
+    grupo: 'Fidelidade',
+    permissoes: [
+      { id: 'gerenciar_fidelidade', label: 'Gerenciar programa de fidelidade' },
+      { id: 'gerenciar_eventos', label: 'Gerenciar eventos' },
+    ]
   }
 ];
 
@@ -312,6 +329,12 @@ export function PerfisTab() {
     'academico': ['gerenciar_academico', 'registrar_frequencia', 'visualizar_frequencia'],
     'notas': ['registrar_notas', 'visualizar_notas'],
     'relatorio': ['acessar_relatorios'],
+    'cursos-ead': ['gerenciar_cursos_ead'],
+    'modulos-ead': ['gerenciar_modulos_ead'],
+    'aulas-ead': ['gerenciar_aulas_ead'],
+    'matriculas-ead': ['gerenciar_matriculas_ead'],
+    'fidelidade': ['gerenciar_fidelidade'],
+    'eventos': ['gerenciar_eventos'],
   };
 
   // Filtrar perfis
@@ -387,6 +410,12 @@ export function PerfisTab() {
                 <SelectItem value="academico">📋 Frequência</SelectItem>
                 <SelectItem value="notas">📝 Notas</SelectItem>
                 <SelectItem value="relatorio">📊 Relatório</SelectItem>
+                <SelectItem value="cursos-ead">🎬 Cursos EAD</SelectItem>
+                <SelectItem value="modulos-ead">📚 Módulos EAD</SelectItem>
+                <SelectItem value="aulas-ead">📹 Aulas EAD</SelectItem>
+                <SelectItem value="matriculas-ead">👨‍💻 Matrículas EAD</SelectItem>
+                <SelectItem value="fidelidade">🏆 Fidelidade</SelectItem>
+                <SelectItem value="eventos">📅 Eventos</SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedEditavel} onValueChange={setSelectedEditavel}>

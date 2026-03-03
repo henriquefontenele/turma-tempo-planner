@@ -168,7 +168,14 @@ export type Permissao =
   | 'visualizar_frequencia'
   | 'registrar_notas'
   | 'visualizar_notas'
-  | 'acessar_relatorios';
+  | 'acessar_relatorios'
+  | 'gerenciar_cursos_ead'
+  | 'gerenciar_modulos_ead'
+  | 'gerenciar_aulas_ead'
+  | 'gerenciar_matriculas_ead'
+  | 'acessar_relatorios_ead'
+  | 'gerenciar_fidelidade'
+  | 'gerenciar_eventos';
 
 export interface PerfilAcesso {
   id: string;
