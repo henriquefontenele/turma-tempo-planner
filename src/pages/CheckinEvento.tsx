@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, increment } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -117,19 +117,34 @@ export default function CheckinEventoPage() {
 
       await addDoc(collection(db, 'checkins-eventos'), checkin);
 
-      // Creditar pontos no programa de fidelidade (se o usuário tiver cadastro)
+      // Creditar pontos no programa de fidelidade
       try {
-        const fidRef = collection(db, 'transacoes-pontos');
-        await addDoc(fidRef, {
-          usuarioId: user!.uid,
-          tipo: 'credito',
-          quantidade: evento.pontosCreditar,
-          descricao: `Check-in: ${evento.nome}`,
-          categoria: 'participacao',
-          referenciaId: evento.id,
-          criadoPor: 'sistema',
-          dataCriacao: new Date().toISOString(),
-        });
+        // Buscar conta de fidelidade do usuário pelo email
+        const fidUsuariosRef = collection(db, 'fidelidade_usuarios');
+        const fidQuery = query(fidUsuariosRef, where('email', '==', user!.email));
+        const fidSnap = await getDocs(fidQuery);
+
+        if (!fidSnap.empty) {
+          const fidUsuarioDoc = fidSnap.docs[0];
+          
+          // Adicionar transação na coleção correta
+          await addDoc(collection(db, 'fidelidade_transacoes'), {
+            usuarioId: fidUsuarioDoc.id,
+            tipo: 'credito',
+            quantidade: evento.pontosCreditar,
+            descricao: `Check-in: ${evento.nome}`,
+            categoria: 'participacao',
+            referenciaId: evento.id,
+            criadoPor: 'sistema',
+            dataCriacao: new Date().toISOString(),
+          });
+
+          // Atualizar saldo do usuário
+          await updateDoc(doc(db, 'fidelidade_usuarios', fidUsuarioDoc.id), {
+            saldoPontos: increment(evento.pontosCreditar),
+            pontosTotaisAcumulados: increment(evento.pontosCreditar),
+          });
+        }
       } catch (e) {
         console.warn('Pontos de fidelidade não creditados:', e);
       }
