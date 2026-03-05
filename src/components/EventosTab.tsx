@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,6 +63,7 @@ export default function EventosTab() {
           criadoPor: user?.uid || '',
           dataCriacao: new Date().toISOString(),
         };
+        await addItem(novoEvento);
         toast({ title: 'Evento criado com sucesso!' });
       }
       setDialogOpen(false);
@@ -152,6 +153,7 @@ export default function EventosTab() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>{editando ? 'Editar Evento' : 'Novo Evento'}</DialogTitle>
+              <DialogDescription>{editando ? 'Edite as informações do evento' : 'Preencha os dados para criar um novo evento'}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -263,6 +265,7 @@ export default function EventosTab() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>QR Code do Evento</DialogTitle>
+            <DialogDescription>Escaneie o QR Code para fazer check-in no evento</DialogDescription>
           </DialogHeader>
           {eventoQR && (
             <div className="flex flex-col items-center gap-4">
@@ -285,6 +288,7 @@ export default function EventosTab() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Check-ins - {eventoCheckins?.nome}</DialogTitle>
+            <DialogDescription>Lista de check-ins realizados neste evento</DialogDescription>
           </DialogHeader>
           {checkinsDoEvento.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum check-in realizado</p>
