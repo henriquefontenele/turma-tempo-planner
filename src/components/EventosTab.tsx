@@ -58,14 +58,14 @@ export default function EventosTab() {
       } else {
         const id = crypto.randomUUID();
         const qrCodeData = JSON.stringify({ eventoId: id, tipo: 'checkin-evento' });
-        const novoEvento: Evento = {
-          id,
+        const novoEvento = {
           ...form,
           qrCodeData,
           criadoPor: user?.uid || '',
           dataCriacao: new Date().toISOString(),
         };
-        await addItem(novoEvento);
+        // Usar setDoc com ID pré-definido para que o documento tenha o mesmo ID do QR Code
+        await setDoc(doc(db, 'eventos', id), novoEvento);
         toast({ title: 'Evento criado com sucesso!' });
       }
       setDialogOpen(false);
