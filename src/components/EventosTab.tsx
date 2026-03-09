@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { Evento, CheckinEvento } from '@/types/eventos';
 import { useAuth } from '@/hooks/useAuth';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
