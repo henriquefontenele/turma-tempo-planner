@@ -28,31 +28,12 @@ import FidelidadeTab from '@/components/FidelidadeTab';
 import ParceirosTab from '@/components/ParceirosTab';
 import EventosTab from '@/components/EventosTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
+import { MODULO_TITULOS } from '@/config/modulos';
 
-// Mapeamento dos nomes das funcionalidades
+// Mapeamento dos nomes das funcionalidades — títulos por módulo vêm do catálogo único.
 const tabNames: Record<string, string> = {
   dashboard: 'Dashboard',
-  escolas: 'Escolas',
-  turmas: 'Turmas', 
-  disciplinas: 'Disciplinas',
-  professores: 'Professores',
-  alunos: 'Alunos',
-  gerador: 'Gerador de Horários',
-  matricula: 'Matrícula',
-  config: 'Turnos',
-  horarios: 'Horários',
-  academico: 'Frequência',
-  notas: 'Notas',
-  relatorios: 'Relatórios',
-  usuarios: 'Usuários',
-  perfis: 'Perfis de Acesso',
-  'cursos-ead': 'Cursos EAD',
-  'modulos-ead': 'Módulos EAD',
-  'aulas-ead': 'Aulas EAD',
-  'matriculas-ead': 'Matrículas EAD',
-  'fidelidade': 'Programa de Fidelidade',
-  'parceiros': 'Parceiros & Vouchers',
-  'eventos': 'Eventos e Check-in',
+  ...MODULO_TITULOS,
 };
 
 export default function Index() {
