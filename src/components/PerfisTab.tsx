@@ -24,6 +24,7 @@ const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; labe
       { id: 'gerenciar_usuarios', label: 'Gerenciar usuários' },
       { id: 'gerenciar_perfis', label: 'Gerenciar perfis de acesso' },
       { id: 'configuracoes_sistema', label: 'Configurações do sistema' },
+      { id: 'gerenciar_modulos', label: 'Instalar/remover módulos por escola e rede' },
     ]
   },
   {
@@ -384,6 +385,7 @@ export function PerfisTab() {
                 <SelectItem value="config">⚙️ Turnos</SelectItem>
                 <SelectItem value="usuarios">👤 Usuários</SelectItem>
                 <SelectItem value="perfis">🔒 Perfis de Acesso</SelectItem>
+                <SelectItem value="modulos">📦 Módulos</SelectItem>
                 <SelectItem value="alunos">👥 Alunos</SelectItem>
                 <SelectItem value="matricula">📝 Matrícula</SelectItem>
                 <SelectItem value="vagas">🎯 Vagas</SelectItem>

@@ -195,7 +195,8 @@ export type Permissao =
   | 'gerenciar_matriculas_ead'
   | 'acessar_relatorios_ead'
   | 'gerenciar_fidelidade'
-  | 'gerenciar_eventos';
+  | 'gerenciar_eventos'
+  | 'gerenciar_modulos';
 
 export interface PerfilAcesso {
   id: string;

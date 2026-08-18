@@ -19,6 +19,7 @@ import { ConfigTab } from '@/components/ConfigTab';
 import { MatriculaTab } from '@/components/MatriculaTab';
 import { UsuariosTab } from '@/components/UsuariosTab';
 import { PerfisTab } from '@/components/PerfisTab';
+import { ModulosTab } from '@/components/ModulosTab';
 import { Dashboard } from '@/components/Dashboard';
 import { CursosEADTab } from '@/components/CursosEADTab';
 import { ModulosEADTab } from '@/components/ModulosEADTab';
@@ -319,6 +320,8 @@ export default function Index() {
         return <UsuariosTab />;
       case 'perfis':
         return <PerfisTab />;
+      case 'modulos':
+        return <ModulosTab />;
       case 'cursos-ead':
         return <CursosEADTab />;
       case 'modulos-ead': {
