@@ -29,6 +29,8 @@ import ParceirosTab from '@/components/ParceirosTab';
 import EventosTab from '@/components/EventosTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 import { MODULO_TITULOS } from '@/config/modulos';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { School } from 'lucide-react';
 
 // Mapeamento dos nomes das funcionalidades — títulos por módulo vêm do catálogo único.
 const tabNames: Record<string, string> = {
@@ -37,7 +39,7 @@ const tabNames: Record<string, string> = {
 };
 
 export default function Index() {
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout, setEscolaAtiva } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -342,6 +344,24 @@ export default function Index() {
               <h1 className="text-lg font-semibold">{tabNames[activeTab] || 'Sistema de Gestão Escolar'}</h1>
               {user && (
                 <div className="flex items-center gap-4">
+                  {userProfile && userProfile.escolaIds && userProfile.escolaIds.length > 1 && (
+                    <Select
+                      value={userProfile.escolaAtivaId || userProfile.escolaIds[0]}
+                      onValueChange={setEscolaAtiva}
+                    >
+                      <SelectTrigger className="h-9 w-[200px] text-sm">
+                        <School className="w-4 h-4 shrink-0" />
+                        <SelectValue placeholder="Escola ativa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {escolas
+                          .filter((escola) => userProfile.escolaIds?.includes(escola.id))
+                          .map((escola) => (
+                            <SelectItem key={escola.id} value={escola.id}>{escola.nome}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <span className="text-sm text-gray-600">Bem-vindo, {user.email}</span>
                   <button
                     onClick={logout}
