@@ -11,8 +11,8 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
-import { UserProfile, UserRole } from '@/types';
-import { MODULO_IDS_COM_PERMISSAO, MODULO_IDS_VISIVEIS_COM_PERMISSAO, buildPermissaoParaModulos } from '@/config/modulos';
+import { UserProfile, UserRole, Escola, Rede } from '@/types';
+import { MODULO_IDS_COM_PERMISSAO, MODULO_IDS_VISIVEIS_COM_PERMISSAO, buildPermissaoParaModulos, moduloHabilitado } from '@/config/modulos';
 
 // Módulos padrão por papel legado, quando não há perfis-acesso configurado.
 // Extraído para um único lugar — antes esta tabela estava duplicada em dois pontos de loadUserProfile.
@@ -60,6 +60,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  // Módulos habilitados para a escola ativa (herdados da rede quando a escola não
+  // tem lista própria). null = sem restrição conhecida (tudo habilitado) — ver
+  // moduloHabilitado() em src/config/modulos.ts para a leitura fail-open.
+  const [modulosInstalados, setModulosInstalados] = useState<string[] | null>(null);
 
   const loadUserProfile = async (user: User) => {
     let profileLoaded = false;
@@ -322,6 +326,49 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return unsubscribe;
   }, []);
 
+  // Resolve os módulos habilitados da escola ativa (ou herdados da rede dela),
+  // sempre que a escola ativa/atribuída do usuário mudar. Fase 3 do plano de
+  // instalação por escola/rede — checagem dupla em hasAccess().
+  useEffect(() => {
+    const escolaId = userProfile?.escolaAtivaId || userProfile?.escolaIds?.[0];
+
+    if (!escolaId) {
+      // Usuário sem escola atribuída ainda: não restringe (comportamento atual).
+      setModulosInstalados(null);
+      return;
+    }
+
+    let ativo = true;
+    (async () => {
+      try {
+        const escolaDoc = await getDoc(doc(db, 'escolas', escolaId));
+        if (!escolaDoc.exists()) {
+          if (ativo) setModulosInstalados(null);
+          return;
+        }
+        const escola = escolaDoc.data() as Escola;
+        if (escola.modulosHabilitados) {
+          if (ativo) setModulosInstalados(escola.modulosHabilitados);
+          return;
+        }
+        if (!escola.redeId) {
+          if (ativo) setModulosInstalados(null);
+          return;
+        }
+        const redeDoc = await getDoc(doc(db, 'redes', escola.redeId));
+        const rede = redeDoc.exists() ? (redeDoc.data() as Rede) : null;
+        if (ativo) setModulosInstalados(rede?.modulosHabilitados || null);
+      } catch (error) {
+        console.error('Erro ao carregar módulos instalados da escola ativa:', error);
+        if (ativo) setModulosInstalados(null); // fail-open: erro não deve travar acesso
+      }
+    })();
+
+    return () => {
+      ativo = false;
+    };
+  }, [userProfile?.escolaAtivaId, userProfile?.escolaIds]);
+
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
@@ -343,15 +390,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!user) return false;
     // While permissions are loading, deny access (show loading state instead)
     if (!permissionsLoaded) return false;
-    // Administrador SEMPRE tem acesso total
+    // Administrador SEMPRE tem acesso total — inclusive a módulos desligados
+    // para uma escola, já que é o próprio operador do sistema.
     const role = userProfile?.role?.toLowerCase?.() || '';
     if (role === 'administrador' || role === 'admin') return true;
-    return userPermissions.includes(menuId);
+    // Checagem dupla (Fase 3): permissão de perfil E módulo instalado na escola ativa.
+    if (!userPermissions.includes(menuId)) return false;
+    return moduloHabilitado(modulosInstalados, menuId);
   };
 
-  // Define qual escola está "ligada" na sessão, para quem atua em mais de uma
-  // (Fase 2 do plano de instalação de módulos por escola/rede). Ainda não gate
-  // nenhum acesso — isso entra na Fase 3.
+  // Define qual escola está "ligada" na sessão, para quem atua em mais de uma.
+  // Troca a escola ativa muda os módulos habilitados considerados em hasAccess()
+  // (o efeito acima reage a escolaAtivaId e recarrega modulosInstalados).
   const setEscolaAtiva = async (escolaId: string) => {
     if (!user) return;
     try {

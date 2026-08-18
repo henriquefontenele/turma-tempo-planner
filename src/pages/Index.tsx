@@ -30,7 +30,8 @@ import EventosTab from '@/components/EventosTab';
 import { Escola, Turma, Disciplina, Professor, Estudante, Matricula, Configuracoes, HorarioGerado, RegistroFrequencia, RegistroNota } from '@/types';
 import { MODULO_TITULOS } from '@/config/modulos';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { School } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { School, ShieldOff } from 'lucide-react';
 
 // Mapeamento dos nomes das funcionalidades — títulos por módulo vêm do catálogo único.
 const tabNames: Record<string, string> = {
@@ -39,7 +40,7 @@ const tabNames: Record<string, string> = {
 };
 
 export default function Index() {
-  const { user, userProfile, logout, setEscolaAtiva } = useAuth();
+  const { user, userProfile, logout, setEscolaAtiva, hasAccess } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -187,6 +188,25 @@ export default function Index() {
   };
 
   const renderContent = () => {
+    // Reconfere a permissão aqui, não só no menu lateral — Fase 3 do plano de
+    // instalação por escola/rede. Antes, quem chegasse a um activeTab sem
+    // acesso (ex.: via um atalho do Dashboard) via o conteúdo mesmo assim,
+    // porque só o AppSidebar escondia o item; o switch abaixo confiava
+    // cegamente no activeTab.
+    if (activeTab !== 'dashboard' && !hasAccess(activeTab)) {
+      return (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+            <ShieldOff className="w-10 h-10 text-muted-foreground" />
+            <p className="font-medium">Este módulo não está disponível.</p>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Ele pode estar desligado para a sua escola, ou seu perfil de acesso não inclui esta funcionalidade.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return (

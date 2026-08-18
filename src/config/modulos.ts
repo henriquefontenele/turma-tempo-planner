@@ -119,6 +119,20 @@ export function buildFuncionalidadeParaPermissoes(modulos: ModuloDef[] = MODULOS
   return mapa;
 }
 
+/**
+ * Resolve se um módulo está habilitado, dada a lista efetiva de módulos
+ * instalados (da escola, ou herdada da rede quando a escola não tem lista
+ * própria). `null`/`undefined` significa "sem restrição conhecida" — o mesmo
+ * que dizer que está tudo habilitado. É a leitura fail-open deliberada: até
+ * que o operador do sistema desligue algo explicitamente (ou enquanto a
+ * escola ativa não pôde ser resolvida), nada some. Ver Fase 3 do plano:
+ * https://claude.ai/code/artifact/4346d7db-6e4c-49f8-9a7d-41ee8f5b4240
+ */
+export function moduloHabilitado(modulosInstalados: string[] | null | undefined, moduloId: string): boolean {
+  if (!modulosInstalados) return true;
+  return modulosInstalados.includes(moduloId);
+}
+
 /** Grupos de menu na ordem do catálogo, prontos para o AppSidebar (já sem os ocultos). */
 export function buildMenuGroups(modulos: ModuloDef[] = MODULOS) {
   const grupos: { label: string; items: { id: string; label: string; emoji: string }[] }[] = [];
