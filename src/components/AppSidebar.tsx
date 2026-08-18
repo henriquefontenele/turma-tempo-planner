@@ -16,65 +16,10 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { buildMenuGroups } from '@/config/modulos';
 
-const menuGroups = [
-  {
-    label: 'CADASTRO',
-    items: [
-      { id: 'disciplinas', label: 'Disciplinas', emoji: '📚' },
-      { id: 'professores', label: 'Professores', emoji: '👨‍🏫' },
-      { id: 'turmas', label: 'Turmas', emoji: '🎓' },
-      { id: 'escolas', label: 'Escolas', emoji: '🏫' },
-      { id: 'config', label: 'Turnos', emoji: '⚙️' },
-    ]
-  },
-  {
-    label: 'USUÁRIOS',
-    items: [
-      { id: 'usuarios', label: 'Usuários', emoji: '👤' },
-      { id: 'perfis', label: 'Perfis de Acesso', emoji: '🔒' },
-    ]
-  },
-  {
-    label: 'MATRÍCULA',
-    items: [
-      { id: 'alunos', label: 'Alunos', emoji: '👥' },
-      { id: 'matricula', label: 'Matrícula', emoji: '📝' },
-    ]
-  },
-  {
-    label: 'EAD',
-    items: [
-      { id: 'cursos-ead', label: 'Cursos', emoji: '🎬' },
-      { id: 'modulos-ead', label: 'Módulos', emoji: '📚' },
-      { id: 'aulas-ead', label: 'Aulas', emoji: '📹' },
-      { id: 'matriculas-ead', label: 'Matrículas', emoji: '👨‍💻' },
-    ]
-  },
-  {
-    label: 'HORÁRIO',
-    items: [
-      { id: 'gerador', label: 'Gerador', emoji: '🎯' },
-      { id: 'horarios', label: 'Horários', emoji: '📅' },
-    ]
-  },
-  {
-    label: 'ACADÊMICO',
-    items: [
-      { id: 'academico', label: 'Frequência', emoji: '📋' },
-      { id: 'notas', label: 'Notas', emoji: '📝' },
-      { id: 'relatorios', label: 'Relatórios', emoji: '📊' },
-    ]
-  },
-  {
-    label: 'FIDELIDADE',
-    items: [
-      { id: 'fidelidade', label: 'Programa', emoji: '🏆' },
-      { id: 'parceiros', label: 'Parceiros', emoji: '🤝' },
-      { id: 'eventos', label: 'Eventos', emoji: '📅' },
-    ]
-  }
-];
+// Grupos e itens do menu vêm do catálogo único de módulos (src/config/modulos.ts).
+const menuGroups = buildMenuGroups();
 
 interface AppSidebarProps {
   activeTab: string;

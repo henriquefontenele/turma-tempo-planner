@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PerfilAcesso, Permissao, UserProfile } from '@/types';
 import { Shield, Edit, Trash2, Users, Check, Plus, Search, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { buildFuncionalidadeParaPermissoes } from '@/config/modulos';
 
 const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; label: string }[] }[] = [
   {
@@ -312,30 +313,11 @@ export function PerfisTab() {
   const permissoesHerdadas = editingPerfil?.herdarDe ? getPermissoesHerdadas(editingPerfil.herdarDe) : [];
   const todasPermissoes = [...new Set([...permissoesHerdadas, ...(editingPerfil?.permissoes || [])])];
 
-  // Mapeamento de funcionalidades para permissões
-  const funcionalidadeParaPermissoes: { [key: string]: Permissao[] } = {
-    'disciplinas': ['gerenciar_disciplinas'],
-    'professores': ['gerenciar_professores'],
-    'turmas': ['gerenciar_turmas'],
-    'escolas': ['gerenciar_escolas'],
-    'config': ['configuracoes_sistema'],
-    'usuarios': ['gerenciar_usuarios'],
-    'perfis': ['gerenciar_perfis'],
-    'alunos': ['gerenciar_alunos'],
-    'matricula': ['gerenciar_matriculas'],
-    'vagas': ['gerenciar_vagas'],
-    'gerador': ['gerar_horarios'],
-    'horarios': ['visualizar_horarios'],
-    'academico': ['gerenciar_academico', 'registrar_frequencia', 'visualizar_frequencia'],
-    'notas': ['registrar_notas', 'visualizar_notas'],
-    'relatorio': ['acessar_relatorios'],
-    'cursos-ead': ['gerenciar_cursos_ead'],
-    'modulos-ead': ['gerenciar_modulos_ead'],
-    'aulas-ead': ['gerenciar_aulas_ead'],
-    'matriculas-ead': ['gerenciar_matriculas_ead'],
-    'fidelidade': ['gerenciar_fidelidade'],
-    'eventos': ['gerenciar_eventos'],
-  };
+  // Mapeamento de funcionalidades para permissões — vem do catálogo único de módulos.
+  // Nota: isso corrige duas pequenas inconsistências que existiam nesta lista copiada à mão
+  // ('relatorio' passa a considerar também acessar_relatorios_ead; 'eventos' também considera
+  // gerenciar_fidelidade) para bater exatamente com o que useAuth já concede como acesso hoje.
+  const funcionalidadeParaPermissoes = buildFuncionalidadeParaPermissoes();
 
   // Filtrar perfis
   const filteredPerfis = perfis.filter(perfil => {
