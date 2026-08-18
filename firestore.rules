@@ -48,6 +48,17 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────
+    // Networks (redes) – groups schools under a shared module package.
+    // Write restricted to admin: which modules a network has bought is
+    // operator territory, not day-to-day staff (see Fase 4/5 do plano de
+    // instalação por escola/rede).
+    // ──────────────────────────────────────────────
+    match /redes/{redeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────
     // Classes/Turmas – public read (needed for enrollment), staff write
     // ──────────────────────────────────────────────
     match /turmas/{turmaId} {

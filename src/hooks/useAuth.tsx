@@ -10,7 +10,7 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { UserProfile, UserRole } from '@/types';
 import { MODULO_IDS_COM_PERMISSAO, MODULO_IDS_VISIVEIS_COM_PERMISSAO, buildPermissaoParaModulos } from '@/config/modulos';
 
@@ -37,6 +37,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   hasAccess: (menuId: string) => boolean;
+  setEscolaAtiva: (escolaId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -348,6 +349,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return userPermissions.includes(menuId);
   };
 
+  // Define qual escola está "ligada" na sessão, para quem atua em mais de uma
+  // (Fase 2 do plano de instalação de módulos por escola/rede). Ainda não gate
+  // nenhum acesso — isso entra na Fase 3.
+  const setEscolaAtiva = async (escolaId: string) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { escolaAtivaId: escolaId });
+      setUserProfile((prev) => (prev ? { ...prev, escolaAtivaId: escolaId } : prev));
+    } catch (error) {
+      console.error('Erro ao definir escola ativa:', error);
+    }
+  };
+
   const value = {
     user,
     userProfile,
@@ -357,6 +371,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signInWithGoogle,
     logout,
     hasAccess,
+    setEscolaAtiva,
   };
 
   return (

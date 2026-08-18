@@ -1,19 +1,25 @@
 
 import { useState } from 'react';
+import { addDoc, arrayRemove, collection, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
-import { Escola } from '@/types';
-import { Plus, Trash2, Building, Edit } from 'lucide-react';
+import { Escola, Rede } from '@/types';
+import { Plus, Trash2, Building, Edit, Network, RefreshCw } from 'lucide-react';
+import { REDE_NOVA_SENTINELA, resolverRedeId, moverEscolaDeRede, migrarEscolasSemRede } from '@/lib/redes';
 
 export function EscolasTab() {
-  const { data: escolas, addItem: addEscola, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas', true);
+  const { data: escolas, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas', true);
+  const { data: redes } = useFirestoreCollection<Rede>('redes', false);
   const [formData, setFormData] = useState({
     nome: '',
     endereco: '',
@@ -21,14 +27,19 @@ export function EscolasTab() {
     email: '',
     ativa: true,
     turnos: [] as ('manhã' | 'tarde' | 'noite')[],
+    redeId: REDE_NOVA_SENTINELA,
   });
   const [editingEscola, setEditingEscola] = useState<Escola | null>(null);
+  const [redeOriginalId, setRedeOriginalId] = useState<string | undefined>(undefined);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [migrando, setMigrando] = useState(false);
   const { toast } = useToast();
+
+  const nomeDaRede = (redeId?: string) => redes.find((r) => r.id === redeId)?.nome;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.nome.trim() || !formData.endereco.trim() || formData.turnos.length === 0) {
       toast({
         title: "Erro",
@@ -38,32 +49,50 @@ export function EscolasTab() {
       return;
     }
 
-    const novaEscola: Omit<Escola, 'id'> = {
-      nome: formData.nome.trim(),
-      endereco: formData.endereco.trim(),
-      telefone: formData.telefone.trim(),
-      email: formData.email.trim(),
-      ativa: formData.ativa,
-      turnos: formData.turnos,
-    };
+    try {
+      // A escola precisa existir antes de saber seu próprio ID (usado quando a
+      // rede é nova, ou para entrar na lista de escolas de uma rede existente).
+      const escolaRef = await addDoc(collection(db, 'escolas'), {
+        nome: formData.nome.trim(),
+        endereco: formData.endereco.trim(),
+        telefone: formData.telefone.trim(),
+        email: formData.email.trim(),
+        ativa: formData.ativa,
+        turnos: formData.turnos,
+        redeId: '',
+      });
 
-    await addEscola(novaEscola);
-    setFormData({ nome: '', endereco: '', telefone: '', email: '', ativa: true, turnos: [] });
-    
-    toast({
-      title: "Sucesso",
-      description: "Escola cadastrada com sucesso!",
-    });
+      const redeId = await resolverRedeId(formData.redeId, { id: escolaRef.id, nome: formData.nome.trim() });
+      if (formData.redeId && formData.redeId !== REDE_NOVA_SENTINELA) {
+        await moverEscolaDeRede(escolaRef.id, undefined, redeId);
+      }
+      await updateDoc(escolaRef, { redeId });
+
+      setFormData({ nome: '', endereco: '', telefone: '', email: '', ativa: true, turnos: [], redeId: REDE_NOVA_SENTINELA });
+
+      toast({
+        title: "Sucesso",
+        description: "Escola cadastrada com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao cadastrar escola:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao cadastrar escola.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEdit = (escola: Escola) => {
-    setEditingEscola(escola);
+    setEditingEscola({ ...escola, redeId: escola.redeId || REDE_NOVA_SENTINELA });
+    setRedeOriginalId(escola.redeId);
     setEditModalOpen(true);
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!editingEscola || !editingEscola.nome.trim() || !editingEscola.endereco.trim() || editingEscola.turnos.length === 0) {
       toast({
         title: "Erro",
@@ -73,18 +102,58 @@ export function EscolasTab() {
       return;
     }
 
-    await updateEscola(editingEscola.id, editingEscola);
-    setEditModalOpen(false);
-    setEditingEscola(null);
-    
-    toast({
-      title: "Sucesso",
-      description: "Escola atualizada com sucesso!",
-    });
+    try {
+      const redeId = await resolverRedeId(editingEscola.redeId, editingEscola);
+      if (redeId !== redeOriginalId) {
+        await moverEscolaDeRede(editingEscola.id, redeOriginalId, redeId);
+      }
+      await updateEscola(editingEscola.id, { ...editingEscola, redeId });
+      setEditModalOpen(false);
+      setEditingEscola(null);
+
+      toast({
+        title: "Sucesso",
+        description: "Escola atualizada com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar escola:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar escola.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMigrarRedes = async () => {
+    setMigrando(true);
+    try {
+      const migradas = await migrarEscolasSemRede(escolas);
+      toast({
+        title: migradas > 0 ? 'Migração concluída' : 'Nada a migrar',
+        description: migradas > 0
+          ? `${migradas} escola(s) receberam uma rede própria.`
+          : 'Todas as escolas já pertencem a uma rede.',
+      });
+    } catch (error) {
+      console.error('Erro ao migrar escolas sem rede:', error);
+      toast({ title: 'Erro', description: 'Erro ao migrar escolas sem rede.', variant: 'destructive' });
+    } finally {
+      setMigrando(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
+    const escola = escolas.find((e) => e.id === id);
     await deleteEscola(id);
+    // Best-effort: tira a escola da lista da rede para não deixar um ID órfão.
+    if (escola?.redeId) {
+      try {
+        await updateDoc(doc(db, 'redes', escola.redeId), { escolaIds: arrayRemove(id) });
+      } catch (error) {
+        console.warn('Não foi possível atualizar a rede após excluir a escola:', error);
+      }
+    }
     toast({
       title: "Sucesso",
       description: "Escola removida com sucesso!",
@@ -174,6 +243,27 @@ export function EscolasTab() {
               </div>
             </div>
 
+            <div>
+              <Label htmlFor="rede">Rede</Label>
+              <Select
+                value={formData.redeId}
+                onValueChange={(value) => setFormData({ ...formData, redeId: value })}
+              >
+                <SelectTrigger id="rede">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={REDE_NOVA_SENTINELA}>🆕 Rede própria (só esta escola)</SelectItem>
+                  {redes.map((rede) => (
+                    <SelectItem key={rede.id} value={rede.id}>{rede.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Toda escola pertence a uma rede. Escolha uma rede existente para agrupar com outras escolas, ou deixe como "rede própria" para uma escola avulsa.
+              </p>
+            </div>
+
             <div className="flex items-center space-x-2">
               <Switch
                 id="ativa"
@@ -193,7 +283,13 @@ export function EscolasTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Escolas Cadastradas</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Escolas Cadastradas</CardTitle>
+            <Button variant="outline" size="sm" onClick={handleMigrarRedes} disabled={migrando}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${migrando ? 'animate-spin' : ''}`} />
+              Migrar escolas sem rede
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {escolas.length === 0 ? (
@@ -207,6 +303,13 @@ export function EscolasTab() {
                       <Building className="w-4 h-4" />
                       {escola.nome}
                       {!escola.ativa && <span className="text-red-500 text-sm">(Inativa)</span>}
+                      {escola.redeId ? (
+                        <Badge variant="outline" className="gap-1 font-normal">
+                          <Network className="w-3 h-3" /> {nomeDaRede(escola.redeId) || 'Rede'}
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="font-normal">sem rede</Badge>
+                      )}
                     </h4>
                     <div className="flex items-center gap-2">
                       <Switch
@@ -262,6 +365,23 @@ export function EscolasTab() {
                                   value={editingEscola.email}
                                   onChange={(e) => setEditingEscola({ ...editingEscola, email: e.target.value })}
                                 />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-rede">Rede</Label>
+                                <Select
+                                  value={editingEscola.redeId || REDE_NOVA_SENTINELA}
+                                  onValueChange={(value) => setEditingEscola({ ...editingEscola, redeId: value })}
+                                >
+                                  <SelectTrigger id="edit-rede">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={REDE_NOVA_SENTINELA}>🆕 Rede própria (só esta escola)</SelectItem>
+                                    {redes.map((rede) => (
+                                      <SelectItem key={rede.id} value={rede.id}>{rede.nome}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div>
                                 <Label>Turnos de Funcionamento *</Label>

@@ -69,6 +69,23 @@ export interface Escola {
   email: string;
   ativa: boolean;
   turnos: ('manhã' | 'tarde' | 'noite')[];
+  /** Toda escola vive dentro de uma rede — mesmo avulsa, é uma rede de uma escola só. */
+  redeId: string;
+  /** Módulos habilitados para esta escola. Ausente = herda 100% da rede (Fase 3 aplica essa regra). */
+  modulosHabilitados?: string[];
+}
+
+/**
+ * Agrupa escolas que compartilham o mesmo pacote de módulos contratado.
+ * Toda escola pertence a exatamente uma rede — decisão confirmada na auditoria:
+ * https://claude.ai/code/artifact/4346d7db-6e4c-49f8-9a7d-41ee8f5b4240
+ */
+export interface Rede {
+  id: string;
+  nome: string;
+  /** Módulos habilitados para todas as escolas desta rede (ver Fase 3 para a regra de herança). */
+  modulosHabilitados: string[];
+  escolaIds: string[];
 }
 
 export interface Estudante {
@@ -147,6 +164,8 @@ export interface UserProfile {
   nome: string;
   role: UserRole;
   escolaIds?: string[];
+  /** Qual das escolas em escolaIds está "ligada" na sessão, para quem atua em mais de uma. */
+  escolaAtivaId?: string;
   ativo: boolean;
   mustResetPassword?: boolean;
 }
