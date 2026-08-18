@@ -58,8 +58,6 @@ export const MODULOS: ModuloDef[] = [
   // MATRÍCULA
   { id: 'alunos', grupo: 'MATRÍCULA', label: 'Alunos', emoji: '👥', permissoes: ['gerenciar_alunos'] },
   { id: 'matricula', grupo: 'MATRÍCULA', label: 'Matrícula', emoji: '📝', permissoes: ['gerenciar_matriculas'] },
-  // Vagas: tela e permissão existem, mas não há entrada de menu — órfão conhecido (ver seção 02 da auditoria).
-  { id: 'vagas', grupo: 'MATRÍCULA', label: 'Vagas', emoji: '🎯', permissoes: ['gerenciar_vagas'], ocultoNoMenu: true },
 
   // EAD
   { id: 'cursos-ead', grupo: 'EAD', label: 'Cursos', titulo: 'Cursos EAD', emoji: '🎬', permissoes: ['gerenciar_cursos_ead'] },

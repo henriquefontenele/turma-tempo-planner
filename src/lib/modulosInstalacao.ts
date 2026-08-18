@@ -4,9 +4,9 @@ import { Escola, Rede } from '@/types';
 import { MODULOS } from '@/config/modulos';
 
 /**
- * Módulos "vendíveis" na tela de instalação — exclui órfãos sem entrada de
- * menu (ex.: vagas), já que ligar/desligar algo que nenhuma tela usa não tem
- * efeito visível nenhum hoje.
+ * Módulos "vendíveis" na tela de instalação — exclui qualquer módulo marcado
+ * como órfão (`ocultoNoMenu`) no catálogo, já que ligar/desligar algo que
+ * nenhuma tela usa não tem efeito visível nenhum hoje.
  */
 export const MODULOS_INSTALAVEIS = MODULOS.filter((m) => !m.ocultoNoMenu);
 

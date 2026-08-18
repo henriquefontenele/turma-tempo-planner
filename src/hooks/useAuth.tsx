@@ -82,6 +82,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         console.log('🎭 Valor de role no perfil:', profile.role, '-> lower:', roleLower);
 
         // ADMIN: acesso total imediato, sem depender de perfis-acesso
+        // TODO(dívida técnica, Fase 5 - item adiado por decisão explícita): o bypass
+        // por e-mail fixo abaixo é uma rede de segurança caso o campo `role` do seu
+        // usuário não esteja como 'administrador' no Firestore. Removê-lo sem antes
+        // confirmar esse dado arrisca travar o próprio operador do sistema fora do
+        // app. Só remover depois de confirmar users/{uid}.role === 'administrador'.
         if (roleLower === 'administrador' || roleLower === 'admin' || user.email === 'henriquefontenele@gmail.com') {
           console.log('🔑 ADMIN detectado! Concedendo acesso total.');
           setUserPermissions(MODULO_IDS_VISIVEIS_COM_PERMISSAO);

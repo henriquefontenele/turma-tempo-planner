@@ -102,14 +102,18 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────
-    // Academic records (grades, attendance)
+    // Academic records (attendance, grades) – nomes corrigidos para bater com
+    // as coleções reais usadas pelo app (Index.tsx). As antigas "academico" e
+    // "notas" nunca foram gravadas por nenhum código — eram só os IDs de menu,
+    // não nomes de coleção; sem esta correção, todo write nestas coleções caía
+    // no "nega tudo" padrão do fim do arquivo.
     // ──────────────────────────────────────────────
-    match /academico/{docId} {
+    match /registros-frequencia/{docId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
     }
 
-    match /notas/{notaId} {
+    match /registros-notas/{docId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
     }
@@ -132,7 +136,8 @@ service cloud.firestore {
       allow write: if isStaff();
     }
 
-    match /fidelidade_resgates/{docId} {
+    // Nome corrigido: FidelidadeTab.tsx grava em "fidelidade_pedidos", não "fidelidade_resgates".
+    match /fidelidade_pedidos/{docId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
     }
@@ -185,17 +190,23 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────
-    // Partners
+    // Partners & vouchers – nomes corrigidos (ParceirosTab.tsx/FidelidadeTab.tsx
+    // usam "fidelidade_parceiros" e "fidelidade_vouchers", não "parceiros").
     // ──────────────────────────────────────────────
-    match /parceiros/{parceiroId} {
+    match /fidelidade_parceiros/{parceiroId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /fidelidade_vouchers/{voucherId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
     }
 
     // ──────────────────────────────────────────────
-    // Schedules / Horarios
+    // Schedules – nome corrigido (Index.tsx usa "horarios-gerados", não "horarios").
     // ──────────────────────────────────────────────
-    match /horarios/{horarioId} {
+    match /horarios-gerados/{horarioId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
     }

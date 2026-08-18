@@ -180,7 +180,6 @@ export type Permissao =
   | 'gerenciar_professores'
   | 'gerenciar_alunos'
   | 'gerenciar_matriculas'
-  | 'gerenciar_vagas'
   | 'gerar_horarios'
   | 'visualizar_horarios'
   | 'gerenciar_academico'
