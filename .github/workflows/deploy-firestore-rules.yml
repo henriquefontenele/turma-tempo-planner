@@ -1,0 +1,36 @@
+name: Deploy Firestore Rules
+
+# Publica firestore.rules no projeto Firebase (matriculaon-2938b) sempre que o
+# arquivo muda na main, ou manualmente via workflow_dispatch.
+#
+# Requer o secret FIREBASE_SERVICE_ACCOUNT no repositório (Settings > Secrets
+# and variables > Actions > New repository secret), com o JSON de uma service
+# account do projeto que tenha o papel "Cloud Datastore Owner" ou "Firebase
+# Rules Admin". Gere em:
+# https://console.firebase.google.com/project/matriculaon-2938b/settings/serviceaccounts/adminsdk
+# (Gerar nova chave privada) e cole o conteúdo do JSON inteiro no secret.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/deploy-firestore-rules.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Autenticar no Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy das regras do Firestore
+        run: npx firebase-tools@13 deploy --only firestore:rules --project matriculaon-2938b
