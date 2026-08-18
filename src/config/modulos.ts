@@ -52,6 +52,9 @@ export const MODULOS: ModuloDef[] = [
   { id: 'usuarios', grupo: 'USUÁRIOS', label: 'Usuários', emoji: '👤', permissoes: ['gerenciar_usuarios'] },
   { id: 'perfis', grupo: 'USUÁRIOS', label: 'Perfis de Acesso', emoji: '🔒', permissoes: ['gerenciar_perfis'] },
 
+  // SISTEMA — território do operador do sistema (Fase 4 do plano de instalação por escola/rede)
+  { id: 'modulos', grupo: 'SISTEMA', label: 'Módulos', titulo: 'Instalação de Módulos', emoji: '📦', permissoes: ['gerenciar_modulos'] },
+
   // MATRÍCULA
   { id: 'alunos', grupo: 'MATRÍCULA', label: 'Alunos', emoji: '👥', permissoes: ['gerenciar_alunos'] },
   { id: 'matricula', grupo: 'MATRÍCULA', label: 'Matrícula', emoji: '📝', permissoes: ['gerenciar_matriculas'] },
