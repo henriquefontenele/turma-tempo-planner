@@ -38,10 +38,9 @@ const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; labe
     ]
   },
   {
-    grupo: 'Matrículas e Vagas',
+    grupo: 'Matrículas',
     permissoes: [
       { id: 'gerenciar_matriculas', label: 'Gerenciar matrículas' },
-      { id: 'gerenciar_vagas', label: 'Gerenciar vagas' },
     ]
   },
   {
@@ -388,7 +387,6 @@ export function PerfisTab() {
                 <SelectItem value="modulos">📦 Módulos</SelectItem>
                 <SelectItem value="alunos">👥 Alunos</SelectItem>
                 <SelectItem value="matricula">📝 Matrícula</SelectItem>
-                <SelectItem value="vagas">🎯 Vagas</SelectItem>
                 <SelectItem value="gerador">🎯 Gerador</SelectItem>
                 <SelectItem value="horarios">📅 Horários</SelectItem>
                 <SelectItem value="academico">📋 Frequência</SelectItem>
