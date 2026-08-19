@@ -29,11 +29,17 @@ export function UsuariosTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, hasAccess } = useAuth();
   const { toast } = useToast();
 
-  // Verificar se o usuário tem permissão para gerenciar usuários
-  const canManageUsers = userProfile?.role === 'administrador';
+  // Verificar se o usuário tem permissão para gerenciar usuários. Antes isso
+  // era travado em role === 'administrador' na unha, ignorando por completo o
+  // sistema de permissões granulares — um perfil customizado com a permissão
+  // gerenciar_usuarios via Perfis de Acesso enxergava o menu "Usuários" (por
+  // causa do hasAccess() do catálogo de módulos) mas caía em "Acesso Negado"
+  // ao entrar. hasAccess('usuarios') é a mesma fonte de verdade usada pra
+  // decidir se o menu aparece, então as duas checagens não podem mais divergir.
+  const canManageUsers = hasAccess('usuarios');
 
   useEffect(() => {
     if (canManageUsers) {

@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,9 +22,26 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate, ConfiguracaoFidelidade } from '@/types/fidelidade';
 import type { Parceiro, Voucher } from '@/types/parceiros';
-import type { Estudante } from '@/types';
+import type { Estudante, UserProfile, PerfilAcesso } from '@/types';
 import type { Evento, CheckinEvento } from '@/types/eventos';
 import FidelidadeDashboard from './FidelidadeDashboard';
+
+// Nome do perfil de acesso (Perfis de Acesso) usado para identificar contas de
+// responsáveis dentro da coleção "users". Comparado sem acento/maiúsculas para
+// tolerar "Responsável", "responsavel", etc. — quem cria o perfil digita o nome
+// livremente na tela de Perfis, então não há um ID fixo pra depender aqui.
+const NOME_PERFIL_RESPONSAVEL = 'responsavel';
+// Remove marcas diacríticas (acentos) após normalize('NFD') comparando os
+// code points diretamente, em vez de um character class de regex com
+// caracteres combinantes literais no código-fonte (fácil de corromper ao
+// copiar/colar). Faixa U+0300–U+036F = "Combining Diacritical Marks".
+const normalizarNomePerfil = (nome: string) =>
+  Array.from(nome.trim().toLowerCase().normalize('NFD'))
+    .filter((ch) => {
+      const code = ch.codePointAt(0) || 0;
+      return code < 0x0300 || code > 0x036f;
+    })
+    .join('');
 
 interface FidelidadeTabProps {
   estudantes: Estudante[];
@@ -53,6 +72,26 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     });
   const { data: eventosData } = useFirestoreCollection<Evento>('fidelidade_eventos');
   const { data: checkinsData } = useFirestoreCollection<CheckinEvento>('fidelidade_checkins');
+  // Fonte dos "usuários do programa": contas reais do sistema (coleção
+  // "users", cadastradas em Usuários) com o perfil "Responsável", em vez de um
+  // formulário de nome/e-mail solto dentro da própria fidelidade — evita
+  // duplicidade e e-mail digitado errado (ver handleAddUsuario mais abaixo).
+  const { data: usuariosSistema } = useFirestoreCollection<UserProfile>('users');
+  const { data: perfisAcesso } = useFirestoreCollection<PerfilAcesso>('perfis-acesso');
+
+  const perfilResponsavelId = useMemo(
+    () => perfisAcesso.find(p => normalizarNomePerfil(p.nome) === NOME_PERFIL_RESPONSAVEL)?.id,
+    [perfisAcesso]
+  );
+
+  // Responsáveis já cadastrados no sistema (Usuários) que ainda não têm
+  // registro no programa de fidelidade (o id do registro de fidelidade é o
+  // mesmo uid da conta do sistema — ver handleAddUsuario).
+  const candidatosResponsavel = useMemo(() => {
+    if (!perfilResponsavelId) return [];
+    const jaVinculados = new Set(usuarios.map(u => u.id));
+    return usuariosSistema.filter(u => u.role === perfilResponsavelId && u.ativo && !jaVinculados.has(u.id));
+  }, [usuariosSistema, perfilResponsavelId, usuarios]);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -71,8 +110,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
 
   // Form states
   const [novoUsuario, setNovoUsuario] = useState({
-    nome: '',
-    email: '',
+    usuarioSistemaId: '',
     telefone: '',
     cpf: '',
     estudanteIds: [] as string[]
@@ -95,20 +133,32 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
   });
 
   const handleAddUsuario = async () => {
-    if (!novoUsuario.nome || !novoUsuario.email) {
-      toast({ title: 'Erro', description: 'Nome e email são obrigatórios', variant: 'destructive' });
+    if (!novoUsuario.usuarioSistemaId) {
+      toast({ title: 'Erro', description: 'Selecione um responsável cadastrado em Usuários', variant: 'destructive' });
       return;
     }
 
-    await addUsuario({
-      ...novoUsuario,
+    const usuarioSistema = usuariosSistema.find(u => u.id === novoUsuario.usuarioSistemaId);
+    if (!usuarioSistema) return;
+
+    // Grava com o mesmo UID da conta do sistema como ID do documento (em vez
+    // de deixar o Firestore gerar um ID aleatório via addItem/addDoc). Isso é
+    // o que permite o crédito automático de pontos no check-in de evento
+    // (CheckinEvento.tsx) e uma futura tela do próprio responsável localizarem
+    // o registro direto por ID, sem depender de comparar e-mails.
+    await setDoc(doc(db, 'fidelidade_usuarios', usuarioSistema.id), {
+      nome: usuarioSistema.nome,
+      email: usuarioSistema.email,
+      telefone: novoUsuario.telefone,
+      cpf: novoUsuario.cpf,
+      estudanteIds: novoUsuario.estudanteIds,
       saldoPontos: 0,
       pontosTotaisAcumulados: 0,
       dataCadastro: new Date().toISOString(),
       ativo: true
     });
 
-    setNovoUsuario({ nome: '', email: '', telefone: '', cpf: '', estudanteIds: [] });
+    setNovoUsuario({ usuarioSistemaId: '', telefone: '', cpf: '', estudanteIds: [] });
     setDialogOpen(false);
     toast({ title: 'Sucesso', description: 'Usuário cadastrado com sucesso!' });
   };
@@ -173,16 +223,31 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
 
   const handleProcessarPedido = async (pedido: PedidoResgate, novoStatus: PedidoResgate['status']) => {
     const usuario = usuarios.find(u => u.id === pedido.usuarioId);
-    
-    if (novoStatus === 'cancelado' && usuario) {
+
+    // O pedido é criado pelo próprio responsável (portal de fidelidade) sem
+    // debitar pontos na hora — o débito só acontece aqui, na aprovação pelo
+    // staff, que é o ponto de confiança real do fluxo (o cliente não tem
+    // permissão pra alterar o próprio saldo diretamente, ver firestore.rules).
+    // Por isso "cancelado" nunca precisa devolver pontos: como só se cancela
+    // um pedido "pendente" (a UI não permite cancelar um já aprovado), nada
+    // chegou a ser debitado ainda.
+    if (novoStatus === 'aprovado') {
+      if (!usuario || usuario.saldoPontos < pedido.pontosUtilizados) {
+        toast({
+          title: 'Erro',
+          description: 'O usuário não tem saldo suficiente para este resgate. O pedido não foi aprovado.',
+          variant: 'destructive'
+        });
+        return;
+      }
       await updateUsuario(pedido.usuarioId, {
-        saldoPontos: usuario.saldoPontos + pedido.pontosUtilizados
+        saldoPontos: usuario.saldoPontos - pedido.pontosUtilizados
       });
       await addTransacao({
         usuarioId: pedido.usuarioId,
-        tipo: 'credito',
+        tipo: 'debito',
         quantidade: pedido.pontosUtilizados,
-        descricao: `Devolução - Resgate cancelado: ${pedido.recompensaNome}`,
+        descricao: `Resgate aprovado: ${pedido.recompensaNome}`,
         categoria: 'resgate',
         referenciaId: pedido.id,
         criadoPor: userProfile?.id || '',
@@ -548,26 +613,43 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Cadastrar Usuário</DialogTitle>
-                  <DialogDescription>Adicione um novo pai/responsável ao programa de fidelidade</DialogDescription>
+                  <DialogDescription>Vincule ao programa de fidelidade um responsável já cadastrado em Usuários</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div>
-                    <Label>Nome Completo *</Label>
-                    <Input 
-                      value={novoUsuario.nome} 
-                      onChange={e => setNovoUsuario({...novoUsuario, nome: e.target.value})}
-                      placeholder="Nome do responsável"
-                    />
-                  </div>
-                  <div>
-                    <Label>Email *</Label>
-                    <Input 
-                      type="email"
-                      value={novoUsuario.email} 
-                      onChange={e => setNovoUsuario({...novoUsuario, email: e.target.value})}
-                      placeholder="email@exemplo.com"
-                    />
-                  </div>
+                  {!perfilResponsavelId ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum perfil de acesso chamado "Responsável" foi encontrado. Crie-o em{' '}
+                      <strong>Perfis de Acesso</strong> (sem nenhuma permissão marcada) e depois cadastre a
+                      conta da pessoa em <strong>Usuários</strong> com esse perfil antes de vinculá-la aqui.
+                    </p>
+                  ) : candidatosResponsavel.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Não há nenhum responsável cadastrado em <strong>Usuários</strong> (perfil "Responsável")
+                      que ainda não esteja no programa de fidelidade. Cadastre a conta da pessoa em Usuários
+                      primeiro.
+                    </p>
+                  ) : (
+                    <div>
+                      <Label>Responsável (cadastrado em Usuários) *</Label>
+                      <Select
+                        value={novoUsuario.usuarioSistemaId || 'none'}
+                        onValueChange={(value) => setNovoUsuario({
+                          ...novoUsuario,
+                          usuarioSistemaId: value === 'none' ? '' : value
+                        })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um responsável" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Selecione um responsável</SelectItem>
+                          {candidatosResponsavel.map(u => (
+                            <SelectItem key={u.id} value={u.id}>{u.nome} ({u.email})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div>
                     <Label>Telefone</Label>
                     <Input 
@@ -607,7 +689,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button onClick={handleAddUsuario}>Cadastrar</Button>
+                  <Button onClick={handleAddUsuario} disabled={!novoUsuario.usuarioSistemaId}>Cadastrar</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

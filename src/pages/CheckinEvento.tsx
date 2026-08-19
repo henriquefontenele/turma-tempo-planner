@@ -117,19 +117,20 @@ export default function CheckinEventoPage() {
 
       await addDoc(collection(db, 'checkins-eventos'), checkin);
 
-      // Creditar pontos no programa de fidelidade
+      // Creditar pontos no programa de fidelidade. O registro de fidelidade é
+      // gravado com o mesmo UID da conta do sistema (ver FidelidadeTab.tsx ->
+      // handleAddUsuario), então buscamos direto pelo UID em vez de comparar
+      // e-mail — evita o falso-positivo de "check-in deu pontos" quando o
+      // e-mail cadastrado divergia por digitação/capitalização, e some com o
+      // problema de qual conta creditar quando há e-mails duplicados.
+      let pontosCreditados = false;
       try {
-        // Buscar conta de fidelidade do usuário pelo email
-        const fidUsuariosRef = collection(db, 'fidelidade_usuarios');
-        const fidQuery = query(fidUsuariosRef, where('email', '==', user!.email));
-        const fidSnap = await getDocs(fidQuery);
+        const fidUsuarioRef = doc(db, 'fidelidade_usuarios', user!.uid);
+        const fidUsuarioSnap = await getDoc(fidUsuarioRef);
 
-        if (!fidSnap.empty) {
-          const fidUsuarioDoc = fidSnap.docs[0];
-          
-          // Adicionar transação na coleção correta
+        if (fidUsuarioSnap.exists()) {
           await addDoc(collection(db, 'fidelidade_transacoes'), {
-            usuarioId: fidUsuarioDoc.id,
+            usuarioId: user!.uid,
             tipo: 'credito',
             quantidade: evento.pontosCreditar,
             descricao: `Check-in: ${evento.nome}`,
@@ -139,18 +140,22 @@ export default function CheckinEventoPage() {
             dataCriacao: new Date().toISOString(),
           });
 
-          // Atualizar saldo do usuário
-          await updateDoc(doc(db, 'fidelidade_usuarios', fidUsuarioDoc.id), {
+          await updateDoc(fidUsuarioRef, {
             saldoPontos: increment(evento.pontosCreditar),
             pontosTotaisAcumulados: increment(evento.pontosCreditar),
           });
+          pontosCreditados = true;
         }
       } catch (e) {
         console.warn('Pontos de fidelidade não creditados:', e);
       }
 
       setResultado('sucesso');
-      setMensagem(`Check-in realizado! Você ganhou ${evento.pontosCreditar} pontos.`);
+      setMensagem(
+        pontosCreditados
+          ? `Check-in realizado! Você ganhou ${evento.pontosCreditar} pontos.`
+          : 'Check-in realizado! (Você não está cadastrado no programa de fidelidade, então nenhum ponto foi creditado.)'
+      );
     } catch (err) {
       console.error('Erro ao processar QR Code:', err);
       setResultado('erro');
