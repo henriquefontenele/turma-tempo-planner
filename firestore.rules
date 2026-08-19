@@ -21,13 +21,55 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() in ['administrador', 'admin', 'diretor', 'secretario', 'coordenador'];
     }
 
+    // Permissões de um perfil de acesso customizado (perfis-acesso/{perfilId}),
+    // incluindo 1 nível de herança (herdarDe). O app cliente resolve herança
+    // recursiva sem limite (useAuth.tsx); aqui resolvemos só perfil + pai direto
+    // porque cada get() extra conta contra o limite de leituras da regra — cobre
+    // o caso observado em produção (Diretor -> perfil-pai) sem custo ilimitado.
+    // Perfis mais profundos que isso não terão o 2º nível de herança aplicado
+    // nesta checagem de segurança (o cliente ainda respeita a cadeia toda).
+    function permissoesDoPerfil(perfilId) {
+      let doc = get(/databases/$(database)/documents/perfis-acesso/$(perfilId)).data;
+      let proprias = ('permissoes' in doc) && doc.permissoes is list ? doc.permissoes : [];
+      let herdaDe = ('herdarDe' in doc) ? doc.herdarDe : null;
+      // exists() antes do get() do pai evita erro se herdarDe apontar pra um
+      // perfil que foi excluído/renomeado (dado inconsistente não deve derrubar
+      // a avaliação inteira da regra).
+      let paiExiste = herdaDe is string && exists(/databases/$(database)/documents/perfis-acesso/$(herdaDe));
+      let herdadas = paiExiste
+        ? (('permissoes' in get(/databases/$(database)/documents/perfis-acesso/$(herdaDe)).data)
+            && get(/databases/$(database)/documents/perfis-acesso/$(herdaDe)).data.permissoes is list
+            ? get(/databases/$(database)/documents/perfis-acesso/$(herdaDe)).data.permissoes
+            : [])
+        : [];
+      return proprias.concat(herdadas);
+    }
+
+    // Libera acesso a quem tem `permissao` marcada no perfil de acesso
+    // atribuído (users/{uid}.role guarda o ID do perfil), independente de
+    // `role` ser um papel legado ou o ID de um perfil customizado.
+    // Administrador sempre passa. Se o perfil não existir (ex.: `role` é um
+    // papel legado como "diretor"), permissoesDoPerfil() falha o get() e a
+    // expressão cai no fallback `false` do "in" — por isso combinamos com
+    // isStaff() nos pontos de uso, para não quebrar contas com papel legado.
+    function hasPermissao(permissao) {
+      return isAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/perfis-acesso/$(getUserRole())) &&
+        permissao in permissoesDoPerfil(getUserRole())
+      );
+    }
+
     // ──────────────────────────────────────────────
-    // User profiles – owner or admin
+    // User profiles – owner, admin, or perfil com gerenciar_usuarios
     // ──────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Leitura também liberada a quem gerencia fidelidade: é de lá que o
+      // diálogo "Novo Usuário" da aba Fidelidade escolhe a conta do
+      // Responsável em vez de aceitar nome/e-mail digitados à mão.
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || hasPermissao('gerenciar_usuarios') || hasPermissao('gerenciar_fidelidade'));
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || hasPermissao('gerenciar_usuarios'));
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || hasPermissao('gerenciar_usuarios'));
       allow delete: if isAdmin();
     }
 
@@ -119,37 +161,51 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────
-    // Loyalty program
+    // Loyalty program — isStaff() (papel legado) OU perfil customizado com a
+    // permissão gerenciar_fidelidade (ex.: um Diretor cujo perfil de acesso
+    // não usa mais o papel legado "diretor" como valor de `role`).
     // ──────────────────────────────────────────────
     match /fidelidade_usuarios/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
     }
 
     match /fidelidade_transacoes/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
     }
 
     match /fidelidade_recompensas/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
     }
 
     // Nome corrigido: FidelidadeTab.tsx grava em "fidelidade_pedidos", não "fidelidade_resgates".
+    // O próprio responsável pode criar um pedido pendente pra si mesmo (portal
+    // "Meus Pontos") — validado contra o custo real da recompensa, pra não dar
+    // pra fabricar um pedido mais barato do que ele é. Nenhum ponto é debitado
+    // aqui: o débito só acontece quando o staff aprova (ver
+    // FidelidadeTab.tsx -> handleProcessarPedido), que é o ponto de confiança
+    // real do fluxo — por isso update/delete continuam staff-only.
     match /fidelidade_pedidos/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('gerenciar_fidelidade') || (
+        isAuthenticated() &&
+        request.resource.data.usuarioId == request.auth.uid &&
+        request.resource.data.status == 'pendente' &&
+        request.resource.data.pontosUtilizados == get(/databases/$(database)/documents/fidelidade_recompensas/$(request.resource.data.recompensaId)).data.pontosNecessarios
+      );
+      allow update, delete: if isStaff() || hasPermissao('gerenciar_fidelidade');
     }
 
     match /fidelidade_eventos/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
     }
 
     match /fidelidade_checkins/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
     }
 
     // ──────────────────────────────────────────────
