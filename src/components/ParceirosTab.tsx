@@ -11,11 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { Plus, Store, Ticket, Eye, CheckCircle, XCircle, Clock, Copy } from 'lucide-react';
 import type { Parceiro, Voucher } from '@/types/parceiros';
 
 export default function ParceirosTab() {
   const { toast } = useToast();
+  const { hasPermissao } = useAuth();
+  const podeGerenciarParceiros = hasPermissao('fidelidade_gerenciar_parceiros');
   const [activeTab, setActiveTab] = useState('parceiros');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -121,6 +124,7 @@ export default function ParceirosTab() {
 
         {/* Tab Parceiros */}
         <TabsContent value="parceiros" className="space-y-4">
+          {podeGerenciarParceiros && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" /> Novo Parceiro</Button>
@@ -146,6 +150,7 @@ export default function ParceirosTab() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
 
           {/* Edit Dialog */}
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -197,11 +202,15 @@ export default function ParceirosTab() {
                         <TableCell>{p.email || '-'}</TableCell>
                         <TableCell><Badge variant={p.ativo ? 'default' : 'secondary'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge></TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => { setEditingParceiro(p); setEditDialogOpen(true); }}>Editar</Button>
-                            <Button size="sm" variant="outline" onClick={() => handleToggleStatus(p)}>{p.ativo ? 'Desativar' : 'Ativar'}</Button>
-                            <Button size="sm" variant="destructive" onClick={() => deleteParceiro(p.id)}>Excluir</Button>
-                          </div>
+                          {podeGerenciarParceiros ? (
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => { setEditingParceiro(p); setEditDialogOpen(true); }}>Editar</Button>
+                              <Button size="sm" variant="outline" onClick={() => handleToggleStatus(p)}>{p.ativo ? 'Desativar' : 'Ativar'}</Button>
+                              <Button size="sm" variant="destructive" onClick={() => deleteParceiro(p.id)}>Excluir</Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Somente leitura</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -295,7 +304,7 @@ export default function ParceirosTab() {
                           <TableCell>
                             <div className="flex gap-1">
                               <Button size="sm" variant="ghost" onClick={() => { setSelectedVoucher(v); setVoucherDetailOpen(true); }}><Eye className="w-4 h-4" /></Button>
-                              {v.status === 'ativo' && (
+                              {v.status === 'ativo' && podeGerenciarParceiros && (
                                 <>
                                   <Button size="sm" variant="outline" onClick={() => handleMarcarUtilizado(v)}>Utilizado</Button>
                                   <Button size="sm" variant="destructive" onClick={() => handleCancelarVoucher(v)}>Cancelar</Button>

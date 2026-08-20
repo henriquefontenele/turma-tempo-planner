@@ -13,11 +13,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 import { Escola, Rede } from '@/types';
 import { Plus, Trash2, Building, Edit, Network, RefreshCw } from 'lucide-react';
 import { REDE_NOVA_SENTINELA, resolverRedeId, moverEscolaDeRede, migrarEscolasSemRede } from '@/lib/redes';
 
 export function EscolasTab() {
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_escolas');
+  const podeEditar = hasPermissao('editar_escolas');
+  const podeExcluir = hasPermissao('excluir_escolas');
+  const podeAtivar = hasPermissao('ativar_escolas');
   const { data: escolas, updateItem: updateEscola, deleteItem: deleteEscola } = useFirestoreCollection<Escola>('escolas', true);
   const { data: redes } = useFirestoreCollection<Rede>('redes', false);
   const [formData, setFormData] = useState({
@@ -169,6 +175,7 @@ export function EscolasTab() {
 
   return (
     <div className="space-y-6">
+      {podeCriar && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -280,6 +287,7 @@ export function EscolasTab() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -312,10 +320,13 @@ export function EscolasTab() {
                       )}
                     </h4>
                     <div className="flex items-center gap-2">
+                      {podeAtivar && (
                       <Switch
                         checked={escola.ativa}
                         onCheckedChange={() => toggleAtiva(escola.id)}
                       />
+                      )}
+                      {podeEditar && (
                       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
                         <DialogTrigger asChild>
                           <Button
@@ -422,6 +433,8 @@ export function EscolasTab() {
                           )}
                         </DialogContent>
                       </Dialog>
+                      )}
+                      {podeExcluir && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -430,6 +443,7 @@ export function EscolasTab() {
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
+                      )}
                     </div>
                   </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">

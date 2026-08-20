@@ -9,10 +9,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 import { Disciplina, Turma, Escola } from '@/types';
 import { Plus, Trash, Edit } from 'lucide-react';
 
 export function TurmasTab() {
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_turmas');
+  const podeEditar = hasPermissao('editar_turmas');
+  const podeExcluir = hasPermissao('excluir_turmas');
   const { data: turmas, addItem: addTurma, updateItem: updateTurma, deleteItem: deleteTurma } = useFirestoreCollection<Turma>('turmas', true);
   const { data: disciplinas } = useFirestoreCollection<Disciplina>('disciplinas', false);
   const { data: escolas } = useFirestoreCollection<Escola>('escolas', true);
@@ -191,6 +196,7 @@ export function TurmasTab() {
 
   return (
     <div className="space-y-6">
+      {podeCriar && (
       <Card>
         <CardHeader>
           <CardTitle>Cadastrar Turma</CardTitle>
@@ -298,6 +304,7 @@ export function TurmasTab() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -315,6 +322,7 @@ export function TurmasTab() {
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-lg">{turma.nome}</h4>
                       <div className="flex gap-2">
+                        {podeEditar && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -323,6 +331,8 @@ export function TurmasTab() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
+                        )}
+                        {podeExcluir && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -331,6 +341,7 @@ export function TurmasTab() {
                         >
                           <Trash className="w-4 h-4" />
                         </Button>
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">

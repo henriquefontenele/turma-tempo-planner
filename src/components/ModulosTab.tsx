@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Boxes, Network, Building, RotateCcw } from 'lucide-react';
 
 export function ModulosTab() {
-  const { userProfile } = useAuth();
+  const { hasAccess, hasPermissao } = useAuth();
   // false: o operador precisa ver e gerenciar módulos de TODAS as escolas/redes,
   // não só as que estão em userProfile.escolaIds.
   const { data: redes } = useFirestoreCollection<Rede>('redes', false);
@@ -20,14 +20,13 @@ export function ModulosTab() {
   const { toast } = useToast();
   const [redeSelecionadaId, setRedeSelecionadaId] = useState<string | null>(null);
 
-  // Só o operador do sistema liga/desliga módulos — decisão confirmada na análise:
+  // Gate roteado pelo sistema genérico de permissões (hasAccess), não mais por
+  // um literal de papel — decisão confirmada na análise:
   // https://claude.ai/code/artifact/4346d7db-6e4c-49f8-9a7d-41ee8f5b4240
-  // Reaproveita a mesma trava de UsuariosTab/PerfisTab; a Fase 5 substitui isso
-  // por um papel "operador_sistema" explícito, quando o bypass por e-mail fixo
-  // também for removido.
-  const isOperador = userProfile?.role === 'administrador';
-
-  if (!isOperador) {
+  // O bypass coringa/administrador embutido em hasAccess preserva o
+  // comportamento atual do operador; um perfil customizado com a permissão de
+  // menu "modulos" também passa a entrar aqui.
+  if (!hasAccess('modulos')) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
@@ -40,6 +39,15 @@ export function ModulosTab() {
       </Card>
     );
   }
+
+  // Permissões granulares de ativação/desativação (Fase 6): quem tem apenas
+  // uma direção liberada (ex.: só ativar) vê o switch travado na direção que
+  // não pode executar. Contas coringa/administrador têm hasPermissao sempre
+  // true, então não veem nenhuma mudança de comportamento.
+  const podeAtivarRede = hasPermissao('ativar_modulos_rede');
+  const podeDesativarRede = hasPermissao('desativar_modulos_rede');
+  const podeAtivarEscola = hasPermissao('ativar_modulos_escola');
+  const podeDesativarEscola = hasPermissao('desativar_modulos_escola');
 
   const redeSelecionada = redes.find((r) => r.id === redeSelecionadaId) || redes[0] || null;
   const escolasDaRede = redeSelecionada
@@ -142,12 +150,18 @@ export function ModulosTab() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {MODULOS_INSTALAVEIS.map((modulo) => {
                       const habilitado = (redeSelecionada.modulosHabilitados || []).includes(modulo.id);
+                      // Ligar exige podeAtivarRede; desligar exige podeDesativarRede.
+                      const semPermissaoParaAcao = habilitado ? !podeDesativarRede : !podeAtivarRede;
                       return (
                         <div key={modulo.id} className="flex items-center justify-between gap-2 p-2 rounded-md border">
                           <span className="text-sm flex items-center gap-2">
                             <span>{modulo.emoji}</span> {modulo.label}
                           </span>
-                          <Switch checked={habilitado} onCheckedChange={() => handleToggleRede(modulo.id, habilitado)} />
+                          <Switch
+                            checked={habilitado}
+                            disabled={semPermissaoParaAcao}
+                            onCheckedChange={() => handleToggleRede(modulo.id, habilitado)}
+                          />
                         </div>
                       );
                     })}
@@ -190,7 +204,7 @@ export function ModulosTab() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  disabled={!personalizada}
+                                  disabled={!personalizada || (!podeAtivarEscola && !podeDesativarEscola)}
                                   onClick={() => handleRestaurarHeranca(escola.id)}
                                 >
                                   <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Restaurar herança da rede
@@ -200,6 +214,9 @@ export function ModulosTab() {
                                 {MODULOS_INSTALAVEIS.map((modulo) => {
                                   const habilitadoNaRede = (redeSelecionada.modulosHabilitados || []).includes(modulo.id);
                                   const habilitadoNaEscola = modulosEfetivos.includes(modulo.id);
+                                  // Ligar exige podeAtivarEscola; desligar exige podeDesativarEscola —
+                                  // combinado com a trava já existente de habilitadoNaRede.
+                                  const semPermissaoParaAcao = habilitadoNaEscola ? !podeDesativarEscola : !podeAtivarEscola;
                                   return (
                                     <div
                                       key={modulo.id}
@@ -212,7 +229,7 @@ export function ModulosTab() {
                                       </span>
                                       <Switch
                                         checked={habilitadoNaEscola}
-                                        disabled={!habilitadoNaRede}
+                                        disabled={!habilitadoNaRede || semPermissaoParaAcao}
                                         onCheckedChange={() => handleToggleEscola(escola, modulo.id, habilitadoNaEscola)}
                                       />
                                     </div>

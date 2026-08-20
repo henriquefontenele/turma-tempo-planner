@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { Disciplina, Professor } from '@/types';
 import { Plus, Trash, Edit } from 'lucide-react';
 
@@ -16,6 +17,10 @@ interface ProfessoresTabProps {
 }
 
 export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }: ProfessoresTabProps) {
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_professores');
+  const podeEditar = hasPermissao('editar_professores');
+  const podeExcluir = hasPermissao('excluir_professores');
   const [formData, setFormData] = useState({
     nome: '',
     disciplinas: [] as string[],
@@ -177,6 +182,7 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
 
   return (
     <div className="space-y-6">
+      {podeCriar && (
       <Card>
         <CardHeader>
           <CardTitle>Cadastrar Professor</CardTitle>
@@ -275,6 +281,7 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -290,6 +297,7 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-lg">{professor.nome}</h4>
                     <div className="flex gap-2">
+                      {podeEditar && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -298,6 +306,8 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
+                      )}
+                      {podeExcluir && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -306,6 +316,7 @@ export function ProfessoresTab({ professores, disciplinas, onProfessoresChange }
                       >
                         <Trash className="w-4 h-4" />
                       </Button>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">

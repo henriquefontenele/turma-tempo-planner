@@ -31,9 +31,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Layers, Plus, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import { ModuloEAD, CursoEAD } from '@/types';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ModulosEADTab() {
   const { toast } = useToast();
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_modulos_ead');
+  const podeEditar = hasPermissao('editar_modulos_ead');
+  const podeExcluir = hasPermissao('excluir_modulos_ead');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingModulo, setEditingModulo] = useState<ModuloEAD | null>(null);
   const [selectedCurso, setSelectedCurso] = useState('all');
@@ -147,12 +152,14 @@ export function ModulosEADTab() {
             </CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            {podeCriar && (
             <DialogTrigger asChild>
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Módulo
               </Button>
             </DialogTrigger>
+            )}
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
@@ -298,6 +305,7 @@ export function ModulosEADTab() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
+                          {podeEditar && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -305,6 +313,8 @@ export function ModulosEADTab() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
+                          )}
+                          {podeExcluir && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -312,6 +322,7 @@ export function ModulosEADTab() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

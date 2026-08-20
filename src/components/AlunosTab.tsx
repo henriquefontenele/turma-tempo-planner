@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Escola, Turma, Estudante, Matricula } from '@/types';
 import { Users, Download, Search, Pencil, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import jsPDF from 'jspdf';
 
 interface AlunosTabProps {
@@ -30,6 +31,9 @@ export function AlunosTab({
   onEstudantesChange,
   onMatriculasChange 
 }: AlunosTabProps) {
+  const { hasPermissao } = useAuth();
+  const podeEditar = hasPermissao('editar_alunos');
+  const podeExcluir = hasPermissao('excluir_alunos');
   const [filtros, setFiltros] = useState({
     escola: 'all-schools',
     turma: 'all-classes',
@@ -271,6 +275,7 @@ export function AlunosTab({
                             
                             {estudante && (
                               <>
+                                {podeEditar && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -278,7 +283,9 @@ export function AlunosTab({
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                
+                                )}
+
+                                {podeExcluir && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button variant="outline" size="sm">
@@ -294,7 +301,7 @@ export function AlunosTab({
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction 
+                                      <AlertDialogAction
                                         onClick={() => handleDeleteStudent(estudante.id)}
                                         className="bg-red-600 hover:bg-red-700"
                                       >
@@ -303,6 +310,7 @@ export function AlunosTab({
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>
+                                )}
                               </>
                             )}
                           </div>

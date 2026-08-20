@@ -8,10 +8,15 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 import { Disciplina } from '@/types';
 import { Plus, Trash, Edit } from 'lucide-react';
 
 export function DisciplinasTab() {
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_disciplinas');
+  const podeEditar = hasPermissao('editar_disciplinas');
+  const podeExcluir = hasPermissao('excluir_disciplinas');
   const { data: disciplinas, addItem: addDisciplina, updateItem: updateDisciplina, deleteItem: deleteDisciplina, loading, error } = useFirestoreCollection<Disciplina>('disciplinas', false);
   const [formData, setFormData] = useState({
     nome: '',
@@ -108,6 +113,7 @@ export function DisciplinasTab() {
 
   return (
     <div className="space-y-6">
+      {podeCriar && (
       <Card>
         <CardHeader>
           <CardTitle>Cadastrar Disciplina</CardTitle>
@@ -155,6 +161,7 @@ export function DisciplinasTab() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -175,6 +182,7 @@ export function DisciplinasTab() {
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    {podeEditar && (
                     <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -229,6 +237,8 @@ export function DisciplinasTab() {
                         )}
                       </DialogContent>
                     </Dialog>
+                    )}
+                    {podeExcluir && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -237,6 +247,7 @@ export function DisciplinasTab() {
                     >
                       <Trash className="w-4 h-4" />
                     </Button>
+                    )}
                   </div>
                 </div>
               ))}

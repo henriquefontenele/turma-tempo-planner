@@ -10,80 +10,179 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PerfilAcesso, Permissao, UserProfile } from '@/types';
-import { Shield, Edit, Trash2, Users, Check, Plus, Search, Eye } from 'lucide-react';
+import { Shield, Edit, Trash2, Users, Plus, Search, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { buildFuncionalidadeParaPermissoes } from '@/config/modulos';
+import { buildFuncionalidadeParaPermissoes, MODULOS } from '@/config/modulos';
+import PermissoesChecklist, { type GrupoPermissoes } from './PermissoesChecklist';
 
-const PERMISSOES_DISPONIVEIS: { grupo: string; permissoes: { id: Permissao; label: string }[] }[] = [
+// Cada módulo com tela de CRUD ganha um subgrupo com as 4 permissões
+// granulares (visualizar/criar/editar/excluir, + alguma extra sensível). Os
+// antigos "gerenciar_X" foram removidos daqui e do tipo Permissao — qualquer
+// perfil que ainda os tivesse foi migrado pras granulares equivalentes antes
+// da remoção (ver _migrar-permissoes-legado.mjs).
+const PERMISSOES_DISPONIVEIS: GrupoPermissoes[] = [
   {
     grupo: 'Sistema',
-    permissoes: [
-      { id: 'gerenciar_usuarios', label: 'Gerenciar usuários' },
-      { id: 'gerenciar_perfis', label: 'Gerenciar perfis de acesso' },
-      { id: 'configuracoes_sistema', label: 'Configurações do sistema' },
-      { id: 'gerenciar_modulos', label: 'Instalar/remover módulos por escola e rede' },
+    subgrupos: [
+      { nome: 'Usuários', permissoes: [
+        { id: 'visualizar_usuarios', label: 'Visualizar usuários' },
+        { id: 'criar_usuarios', label: 'Criar usuários' },
+        { id: 'editar_usuarios', label: 'Editar usuários' },
+        { id: 'excluir_usuarios', label: 'Excluir usuários' },
+        { id: 'alterar_perfil_usuario', label: 'Alterar perfil de outro usuário' },
+      ]},
+      { nome: 'Perfis de Acesso', permissoes: [
+        { id: 'visualizar_perfis', label: 'Visualizar perfis de acesso' },
+        { id: 'criar_perfis', label: 'Criar perfis de acesso' },
+        { id: 'editar_perfis', label: 'Editar perfis de acesso' },
+        { id: 'excluir_perfis', label: 'Excluir perfis de acesso' },
+      ]},
+      { nome: 'Instalação de Módulos', permissoes: [
+        { id: 'visualizar_instalacao_modulos', label: 'Visualizar instalação de módulos' },
+        { id: 'ativar_modulos_rede', label: 'Ativar módulo por rede' },
+        { id: 'desativar_modulos_rede', label: 'Desativar módulo por rede' },
+        { id: 'ativar_modulos_escola', label: 'Ativar módulo por escola' },
+        { id: 'desativar_modulos_escola', label: 'Desativar módulo por escola' },
+      ]},
+      { permissoes: [
+        { id: 'configuracoes_sistema', label: 'Configurações do sistema (Turnos)' },
+      ]},
     ]
   },
   {
     grupo: 'Cadastros',
-    permissoes: [
-      { id: 'gerenciar_escolas', label: 'Gerenciar escolas' },
-      { id: 'gerenciar_turmas', label: 'Gerenciar turmas' },
-      { id: 'gerenciar_disciplinas', label: 'Gerenciar disciplinas' },
-      { id: 'gerenciar_professores', label: 'Gerenciar professores' },
-      { id: 'gerenciar_alunos', label: 'Gerenciar alunos' },
+    subgrupos: [
+      { nome: 'Escolas', permissoes: [
+        { id: 'visualizar_escolas', label: 'Visualizar escolas' },
+        { id: 'criar_escolas', label: 'Criar escolas' },
+        { id: 'editar_escolas', label: 'Editar escolas' },
+        { id: 'excluir_escolas', label: 'Excluir escolas' },
+        { id: 'ativar_escolas', label: 'Ativar/desativar escolas' },
+      ]},
+      { nome: 'Redes', permissoes: [
+        { id: 'visualizar_redes', label: 'Visualizar redes' },
+        { id: 'criar_redes', label: 'Criar redes' },
+        { id: 'editar_redes', label: 'Editar redes' },
+        { id: 'excluir_redes', label: 'Excluir redes' },
+      ]},
+      { nome: 'Turmas', permissoes: [
+        { id: 'visualizar_turmas', label: 'Visualizar turmas' },
+        { id: 'criar_turmas', label: 'Criar turmas' },
+        { id: 'editar_turmas', label: 'Editar turmas' },
+        { id: 'excluir_turmas', label: 'Excluir turmas' },
+      ]},
+      { nome: 'Disciplinas', permissoes: [
+        { id: 'visualizar_disciplinas', label: 'Visualizar disciplinas' },
+        { id: 'criar_disciplinas', label: 'Criar disciplinas' },
+        { id: 'editar_disciplinas', label: 'Editar disciplinas' },
+        { id: 'excluir_disciplinas', label: 'Excluir disciplinas' },
+      ]},
+      { nome: 'Professores', permissoes: [
+        { id: 'visualizar_professores', label: 'Visualizar professores' },
+        { id: 'criar_professores', label: 'Criar professores' },
+        { id: 'editar_professores', label: 'Editar professores' },
+        { id: 'excluir_professores', label: 'Excluir professores' },
+      ]},
     ]
   },
   {
     grupo: 'Matrículas',
-    permissoes: [
-      { id: 'gerenciar_matriculas', label: 'Gerenciar matrículas' },
+    subgrupos: [
+      { nome: 'Alunos', permissoes: [
+        { id: 'visualizar_alunos', label: 'Visualizar alunos' },
+        { id: 'criar_alunos', label: 'Criar alunos' },
+        { id: 'editar_alunos', label: 'Editar alunos' },
+        { id: 'excluir_alunos', label: 'Excluir alunos' },
+      ]},
+      { nome: 'Matrícula', permissoes: [
+        { id: 'visualizar_matriculas', label: 'Visualizar matrículas' },
+        { id: 'criar_matriculas', label: 'Criar matrículas' },
+        { id: 'editar_matriculas', label: 'Editar matrículas' },
+        { id: 'excluir_matriculas', label: 'Excluir matrículas' },
+      ]},
     ]
   },
   {
     grupo: 'Horários',
-    permissoes: [
+    subgrupos: [{ permissoes: [
       { id: 'gerar_horarios', label: 'Gerar horários' },
       { id: 'visualizar_horarios', label: 'Visualizar horários' },
-    ]
+    ]}]
   },
   {
     grupo: 'Acadêmico',
-    permissoes: [
+    subgrupos: [{ permissoes: [
       { id: 'gerenciar_academico', label: 'Acessar módulo acadêmico' },
       { id: 'registrar_frequencia', label: 'Registrar frequência' },
       { id: 'visualizar_frequencia', label: 'Visualizar frequência' },
       { id: 'registrar_notas', label: 'Registrar notas' },
       { id: 'visualizar_notas', label: 'Visualizar notas' },
-    ]
+    ]}]
   },
   {
     grupo: 'Relatórios',
-    permissoes: [
+    subgrupos: [{ permissoes: [
       { id: 'acessar_relatorios', label: 'Acessar relatórios' },
-    ]
+    ]}]
   },
   {
     grupo: 'EAD',
-    permissoes: [
-      { id: 'gerenciar_cursos_ead', label: 'Gerenciar cursos EAD' },
-      { id: 'gerenciar_modulos_ead', label: 'Gerenciar módulos EAD' },
-      { id: 'gerenciar_aulas_ead', label: 'Gerenciar aulas EAD' },
-      { id: 'gerenciar_matriculas_ead', label: 'Gerenciar matrículas EAD' },
-      { id: 'acessar_relatorios_ead', label: 'Acessar relatórios EAD' },
+    subgrupos: [
+      { nome: 'Cursos', permissoes: [
+        { id: 'visualizar_cursos_ead', label: 'Visualizar cursos EAD' },
+        { id: 'criar_cursos_ead', label: 'Criar cursos EAD' },
+        { id: 'editar_cursos_ead', label: 'Editar cursos EAD' },
+        { id: 'excluir_cursos_ead', label: 'Excluir cursos EAD' },
+      ]},
+      { nome: 'Módulos', permissoes: [
+        { id: 'visualizar_modulos_ead', label: 'Visualizar módulos EAD' },
+        { id: 'criar_modulos_ead', label: 'Criar módulos EAD' },
+        { id: 'editar_modulos_ead', label: 'Editar módulos EAD' },
+        { id: 'excluir_modulos_ead', label: 'Excluir módulos EAD' },
+      ]},
+      { nome: 'Aulas', permissoes: [
+        { id: 'visualizar_aulas_ead', label: 'Visualizar aulas EAD' },
+        { id: 'criar_aulas_ead', label: 'Criar aulas EAD' },
+        { id: 'editar_aulas_ead', label: 'Editar aulas EAD' },
+        { id: 'excluir_aulas_ead', label: 'Excluir aulas EAD' },
+      ]},
+      { nome: 'Matrículas', permissoes: [
+        { id: 'visualizar_matriculas_ead', label: 'Visualizar matrículas EAD' },
+        { id: 'criar_matriculas_ead', label: 'Criar matrículas EAD' },
+        { id: 'editar_matriculas_ead', label: 'Editar matrículas EAD' },
+        { id: 'excluir_matriculas_ead', label: 'Excluir matrículas EAD' },
+      ]},
+      { nome: 'Relatórios', permissoes: [
+        { id: 'acessar_relatorios_ead', label: 'Acessar relatórios EAD' },
+      ]},
     ]
   },
   {
     grupo: 'Fidelidade',
-    permissoes: [
-      { id: 'gerenciar_fidelidade', label: 'Gerenciar programa de fidelidade' },
-      { id: 'gerenciar_eventos', label: 'Gerenciar eventos' },
+    subgrupos: [
+      { nome: 'Usuários', permissoes: [
+        { id: 'fidelidade_visualizar_extrato', label: 'Visualizar extrato e saldos' },
+        { id: 'fidelidade_creditar_pontos', label: 'Creditar pontos' },
+        { id: 'fidelidade_visualizar_resgates', label: 'Visualizar pedidos de resgate' },
+        { id: 'fidelidade_gerenciar_resgates', label: 'Aprovar/cancelar resgates' },
+      ]},
+      { nome: 'Administrativo', permissoes: [
+        { id: 'fidelidade_gerenciar_recompensas', label: 'Gerenciar recompensas' },
+        { id: 'fidelidade_configurar_expiracao', label: 'Configurar expiração de pontos' },
+        { id: 'fidelidade_gerenciar_eventos', label: 'Gerenciar eventos' },
+      ]},
+      { nome: 'Parceiros', permissoes: [
+        { id: 'fidelidade_visualizar_parceiros', label: 'Visualizar parceiros e vouchers' },
+        { id: 'fidelidade_gerenciar_parceiros', label: 'Gerenciar parceiros e vouchers' },
+      ]},
     ]
   }
 ];
+
+/** Achatada, só pra achar o label de uma permissão pelo id (badges da tabela). */
+const TODAS_PERMISSOES = PERMISSOES_DISPONIVEIS.flatMap((g) => g.subgrupos.flatMap((s) => s.permissoes));
 
 export function PerfisTab() {
   const [perfis, setPerfis] = useState<PerfilAcesso[]>([]);
@@ -97,10 +196,13 @@ export function PerfisTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEditavel, setSelectedEditavel] = useState<string>('todos');
   const [selectedFuncionalidade, setSelectedFuncionalidade] = useState<string>('todas');
-  const { userProfile } = useAuth();
+  const { hasAccess, hasPermissao } = useAuth();
   const { toast } = useToast();
 
-  const canManageProfiles = userProfile?.role === 'administrador';
+  const canManageProfiles = hasAccess('perfis');
+  const podeCriarPerfil = hasPermissao('criar_perfis');
+  const podeEditarPerfil = hasPermissao('editar_perfis');
+  const podeExcluirPerfil = hasPermissao('excluir_perfis');
 
   useEffect(() => {
     if (canManageProfiles) {
@@ -314,9 +416,6 @@ export function PerfisTab() {
   const todasPermissoes = [...new Set([...permissoesHerdadas, ...(editingPerfil?.permissoes || [])])];
 
   // Mapeamento de funcionalidades para permissões — vem do catálogo único de módulos.
-  // Nota: isso corrige duas pequenas inconsistências que existiam nesta lista copiada à mão
-  // ('relatorio' passa a considerar também acessar_relatorios_ead; 'eventos' também considera
-  // gerenciar_fidelidade) para bater exatamente com o que useAuth já concede como acesso hoje.
   const funcionalidadeParaPermissoes = buildFuncionalidadeParaPermissoes();
 
   // Filtrar perfis
@@ -354,10 +453,12 @@ export function PerfisTab() {
                 Configure perfis de acesso e permissões
               </CardDescription>
             </div>
-            <Button onClick={handleCreatePerfil} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Criar Novo Perfil
-            </Button>
+            {podeCriarPerfil && (
+              <Button onClick={handleCreatePerfil} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Criar Novo Perfil
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -377,27 +478,11 @@ export function PerfisTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas as funcionalidades</SelectItem>
-                <SelectItem value="disciplinas">📚 Disciplinas</SelectItem>
-                <SelectItem value="professores">👨‍🏫 Professores</SelectItem>
-                <SelectItem value="turmas">🎓 Turmas</SelectItem>
-                <SelectItem value="escolas">🏫 Escolas</SelectItem>
-                <SelectItem value="config">⚙️ Turnos</SelectItem>
-                <SelectItem value="usuarios">👤 Usuários</SelectItem>
-                <SelectItem value="perfis">🔒 Perfis de Acesso</SelectItem>
-                <SelectItem value="modulos">📦 Módulos</SelectItem>
-                <SelectItem value="alunos">👥 Alunos</SelectItem>
-                <SelectItem value="matricula">📝 Matrícula</SelectItem>
-                <SelectItem value="gerador">🎯 Gerador</SelectItem>
-                <SelectItem value="horarios">📅 Horários</SelectItem>
-                <SelectItem value="academico">📋 Frequência</SelectItem>
-                <SelectItem value="notas">📝 Notas</SelectItem>
-                <SelectItem value="relatorio">📊 Relatório</SelectItem>
-                <SelectItem value="cursos-ead">🎬 Cursos EAD</SelectItem>
-                <SelectItem value="modulos-ead">📚 Módulos EAD</SelectItem>
-                <SelectItem value="aulas-ead">📹 Aulas EAD</SelectItem>
-                <SelectItem value="matriculas-ead">👨‍💻 Matrículas EAD</SelectItem>
-                <SelectItem value="fidelidade">🏆 Fidelidade</SelectItem>
-                <SelectItem value="eventos">📅 Eventos</SelectItem>
+                {MODULOS.filter((m) => m.permissoes.length > 0).map((m) => (
+                  <SelectItem key={m.id} value={m.idFiltroFuncionalidade || m.id}>
+                    {m.emoji} {m.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={selectedEditavel} onValueChange={setSelectedEditavel}>
@@ -456,9 +541,7 @@ export function PerfisTab() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {todasPermissoesPerfil.slice(0, 3).map(permissaoId => {
-                              const permissao = PERMISSOES_DISPONIVEIS
-                                .flatMap(g => g.permissoes)
-                                .find(p => p.id === permissaoId);
+                              const permissao = TODAS_PERMISSOES.find(p => p.id === permissaoId);
                               return (
                                 <Badge key={permissaoId} variant="outline" className="text-xs">
                                   {permissao?.label}
@@ -484,22 +567,26 @@ export function PerfisTab() {
                             </Button>
                             {perfil.editavel ? (
                               <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEditPerfil(perfil)}
-                                  title="Editar perfil"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDeletePerfil(perfil.id)}
-                                  title="Excluir perfil"
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                {podeEditarPerfil && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditPerfil(perfil)}
+                                    title="Editar perfil"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {podeExcluirPerfil && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeletePerfil(perfil.id)}
+                                    title="Excluir perfil"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                )}
                               </>
                             ) : (
                               <Button
@@ -595,36 +682,13 @@ export function PerfisTab() {
                     Permissões em cinza são herdadas e não podem ser removidas
                   </p>
                 )}
-                <div className="space-y-4 mt-2 border rounded-lg p-4 max-h-64 overflow-y-auto">
-                  {PERMISSOES_DISPONIVEIS.map((grupo) => (
-                    <div key={grupo.grupo}>
-                      <p className="font-medium text-sm mb-2">{grupo.grupo}</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {grupo.permissoes.map((permissao) => {
-                          const isHerdada = permissoesHerdadas.includes(permissao.id);
-                          const isSelected = todasPermissoes.includes(permissao.id);
-                          
-                          return (
-                            <div key={permissao.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`permissao-${permissao.id}`}
-                                checked={isSelected}
-                                onCheckedChange={() => !isHerdada && togglePermissao(permissao.id)}
-                                disabled={isHerdada}
-                              />
-                              <Label 
-                                htmlFor={`permissao-${permissao.id}`}
-                                className={`text-sm ${isHerdada ? 'text-muted-foreground' : ''}`}
-                              >
-                                {permissao.label}
-                                {isHerdada && ' (herdada)'}
-                              </Label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                <div className="mt-2 border rounded-lg p-4 max-h-96 overflow-y-auto">
+                  <PermissoesChecklist
+                    grupos={PERMISSOES_DISPONIVEIS}
+                    selecionadas={editingPerfil.permissoes}
+                    herdadas={permissoesHerdadas}
+                    onToggle={togglePermissao}
+                  />
                 </div>
               </div>
             </div>
@@ -706,38 +770,12 @@ export function PerfisTab() {
                   <Label className="text-muted-foreground mb-3 block">
                     Permissões ({todasPermissoes.length})
                   </Label>
-                  <div className="space-y-4 border rounded-md p-4 bg-muted/50">
-                    {PERMISSOES_DISPONIVEIS.map((grupo) => {
-                      const permissoesGrupo = grupo.permissoes.filter(p => 
-                        todasPermissoes.includes(p.id)
-                      );
-                      
-                      if (permissoesGrupo.length === 0) return null;
-                      
-                      return (
-                        <div key={grupo.grupo}>
-                          <h4 className="font-semibold text-sm mb-2 text-foreground">{grupo.grupo}</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {permissoesGrupo.map((permissao) => {
-                              const isHerdada = permissoesHerdadas.includes(permissao.id);
-                              const isDireta = viewingPerfil.permissoes.includes(permissao.id);
-                              
-                              return (
-                                <div key={permissao.id} className="flex items-center gap-2 p-2 bg-background rounded">
-                                  <Check className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm">{permissao.label}</span>
-                                  {isHerdada && !isDireta && (
-                                    <Badge variant="outline" className="text-xs ml-auto">
-                                      Herdada
-                                    </Badge>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="border rounded-md p-4 bg-muted/50">
+                    <PermissoesChecklist
+                      grupos={PERMISSOES_DISPONIVEIS}
+                      selecionadas={viewingPerfil.permissoes}
+                      herdadas={permissoesHerdadas}
+                    />
                   </div>
                 </div>
               </div>

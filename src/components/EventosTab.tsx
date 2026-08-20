@@ -18,7 +18,8 @@ import { Plus, QrCode, Trash2, Edit, Users, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function EventosTab() {
-  const { user } = useAuth();
+  const { user, hasPermissao } = useAuth();
+  const podeGerenciarEventos = hasPermissao('fidelidade_gerenciar_eventos');
   const { data: eventos, addItem, updateItem, deleteItem } = useFirestoreCollection<Evento>('eventos', true);
   const { data: checkins } = useFirestoreCollection<CheckinEvento>('checkins-eventos', true);
 
@@ -148,6 +149,7 @@ export default function EventosTab() {
           <h2 className="text-2xl font-bold">Eventos</h2>
           <p className="text-muted-foreground">Gerencie eventos e QR Codes para check-in automático</p>
         </div>
+        {podeGerenciarEventos && (
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button><Plus className="w-4 h-4 mr-2" /> Novo Evento</Button>
@@ -200,6 +202,7 @@ export default function EventosTab() {
             </div>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {eventos.length === 0 ? (
@@ -245,12 +248,16 @@ export default function EventosTab() {
                           <Button variant="outline" size="icon" onClick={() => handleVerQR(evento)} title="Ver QR Code">
                             <QrCode className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="icon" onClick={() => handleEditar(evento)} title="Editar">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="icon" onClick={() => handleExcluir(evento.id)} title="Excluir">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {podeGerenciarEventos && (
+                            <>
+                              <Button variant="outline" size="icon" onClick={() => handleEditar(evento)} title="Editar">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="outline" size="icon" onClick={() => handleExcluir(evento.id)} title="Excluir">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

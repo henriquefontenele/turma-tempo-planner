@@ -32,9 +32,13 @@ import { useToast } from '@/hooks/use-toast';
 import { UserCheck, Plus, Pencil, Award, Eye } from 'lucide-react';
 import { MatriculaEAD, CursoEAD, Estudante, Escola } from '@/types';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 
 export function MatriculasEADTab() {
   const { toast } = useToast();
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_matriculas_ead');
+  const podeEditar = hasPermissao('editar_matriculas_ead');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMatricula, setEditingMatricula] = useState<MatriculaEAD | null>(null);
   const [selectedCurso, setSelectedCurso] = useState('all');
@@ -163,12 +167,14 @@ export function MatriculasEADTab() {
               <CardDescription>Gerencie as matrículas dos estudantes nos cursos</CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              {podeCriar && (
               <DialogTrigger asChild>
                 <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nova Matrícula
                 </Button>
               </DialogTrigger>
+              )}
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
@@ -401,6 +407,7 @@ export function MatriculasEADTab() {
                               <Award className="w-4 h-4" />
                             </Button>
                           )}
+                          {podeEditar && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -408,6 +415,7 @@ export function MatriculasEADTab() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

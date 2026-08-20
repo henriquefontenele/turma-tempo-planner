@@ -11,8 +11,20 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
-import { UserProfile, UserRole, Escola, Rede } from '@/types';
+import { UserProfile, UserRole, Escola, Rede, Permissao } from '@/types';
 import { MODULO_IDS_COM_PERMISSAO, MODULO_IDS_VISIVEIS_COM_PERMISSAO, buildPermissaoParaModulos, moduloHabilitado } from '@/config/modulos';
+
+// Papéis legados que a Firestore rules trata como isStaff() — espelha
+// exatamente firestore.rules:isStaff() pra que hasPermissao() no cliente
+// nunca esconda/desabilite um botão que a regra do servidor aceitaria.
+// Contas com um desses papéis sempre passam em hasPermissao(), mesmo sem
+// nenhum documento em perfis-acesso — igual já acontece hoje via isStaff().
+const LEGACY_STAFF_ROLES = ['administrador', 'admin', 'diretor', 'secretario', 'coordenador'];
+
+// Tokens que, presentes na lista de permissões de um perfil (própria ou
+// herdada), concedem acesso total — o dado que substitui o bypass hardcoded
+// por nome de papel/e-mail. Ver hasWildcardAccess.
+const STAR_TOKENS = new Set(['*', 'all', 'tudo', 'todos']);
 
 // Módulos padrão por papel legado, quando não há perfis-acesso configurado.
 // Extraído para um único lugar — antes esta tabela estava duplicada em dois pontos de loadUserProfile.
@@ -37,6 +49,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   hasAccess: (menuId: string) => boolean;
+  hasPermissao: (permissao: Permissao) => boolean;
   setEscolaAtiva: (escolaId: string) => Promise<void>;
 }
 
@@ -58,6 +71,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  // Conjunto bruto de Permissao (não os IDs de módulo expandidos acima) —
+  // é o que permite checar uma ação específica dentro de uma aba
+  // (hasPermissao), em vez de só a aba inteira (hasAccess).
+  const [permissoesResolvidas, setPermissoesResolvidas] = useState<Set<string>>(new Set());
+  // true quando o perfil (próprio ou herdado) tem o token coringa — ver
+  // STAR_TOKENS. Substitui o bypass hardcoded por nome de papel/e-mail.
+  const [hasWildcardAccess, setHasWildcardAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   // Módulos habilitados para a escola ativa (herdados da rede quando a escola não
@@ -90,6 +110,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (roleLower === 'administrador' || roleLower === 'admin' || user.email === 'henriquefontenele@gmail.com') {
           console.log('🔑 ADMIN detectado! Concedendo acesso total.');
           setUserPermissions(MODULO_IDS_VISIVEIS_COM_PERMISSAO);
+          setPermissoesResolvidas(new Set(['*']));
+          setHasWildcardAccess(true);
           setPermissionsLoaded(true);
           return; // Não precisa carregar perfis-acesso
         }
@@ -242,13 +264,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
           console.log('📝 Permissões coletadas (com herança):', rawPerms);
 
+          // Guarda o conjunto bruto pra hasPermissao() checar ações
+          // específicas, independente de terem sido mapeadas pra algum menu.
+          setPermissoesResolvidas(new Set(rawPerms.map((p) => String(p).trim())));
+          setHasWildcardAccess(rawPerms.some((p) => STAR_TOKENS.has(String(p).trim().toLowerCase())));
+
           // Converte permissões em IDs de menu finais
           const expanded = new Set<string>();
-          const starTokens = new Set(['*', 'all', 'tudo', 'todos']);
 
           rawPerms.forEach((perm) => {
             const key = String(perm).trim();
-            if (starTokens.has(key.toLowerCase())) {
+            if (STAR_TOKENS.has(key.toLowerCase())) {
               allMenuIds.forEach((id) => expanded.add(id));
               return;
             }
@@ -272,6 +298,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           }
         } else {
           console.log('⚠️ Perfil de acesso não encontrado, usando fallback');
+          setPermissoesResolvidas(new Set());
+          setHasWildcardAccess(false);
           const fallbackKey: UserRole = (roleKey || 'secretario') as UserRole;
           setUserPermissions(MODULOS_PADRAO_POR_ROLE[fallbackKey] || []);
           setPermissionsLoaded(true);
@@ -289,6 +317,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         await setDoc(doc(db, 'users', user.uid), defaultProfile);
         setUserProfile(defaultProfile);
         setUserPermissions(MODULOS_PADRAO_NOVO_USUARIO);
+        setPermissoesResolvidas(new Set());
+        setHasWildcardAccess(false);
         setPermissionsLoaded(true);
       }
     } catch (error) {
@@ -306,6 +336,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         setUserProfile(fallbackProfile);
         setUserPermissions(MODULOS_PADRAO_NOVO_USUARIO);
+        setPermissoesResolvidas(new Set());
+        setHasWildcardAccess(false);
         setPermissionsLoaded(true);
         console.log('⚠️ Fallback aplicado devido a erro:', error);
       } else {
@@ -323,6 +355,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } else {
         setUserProfile(null);
         setUserPermissions([]);
+        setPermissoesResolvidas(new Set());
+        setHasWildcardAccess(false);
         setPermissionsLoaded(false);
       }
       setLoading(false);
@@ -395,13 +429,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!user) return false;
     // While permissions are loading, deny access (show loading state instead)
     if (!permissionsLoaded) return false;
-    // Administrador SEMPRE tem acesso total — inclusive a módulos desligados
-    // para uma escola, já que é o próprio operador do sistema.
+    // Administrador (ou qualquer perfil com o token coringa) SEMPRE tem
+    // acesso total — inclusive a módulos desligados para uma escola.
     const role = userProfile?.role?.toLowerCase?.() || '';
-    if (role === 'administrador' || role === 'admin') return true;
+    if (role === 'administrador' || role === 'admin' || hasWildcardAccess) return true;
     // Checagem dupla (Fase 3): permissão de perfil E módulo instalado na escola ativa.
     if (!userPermissions.includes(menuId)) return false;
     return moduloHabilitado(modulosInstalados, menuId);
+  };
+
+  // Checa uma AÇÃO específica (visualizar_X/criar_X/editar_X/excluir_X, etc.),
+  // não uma aba inteira — é o que permite esconder/desabilitar um botão
+  // dentro de uma tela que a pessoa já pode abrir. Espelha exatamente o que
+  // firestore.rules aceita: papel legado (isStaff()-equivalente) ou coringa
+  // sempre passam; senão, checa se a permissão está no perfil resolvido.
+  const hasPermissao = (permissao: Permissao): boolean => {
+    if (!user || !permissionsLoaded) return false;
+    if (hasWildcardAccess) return true;
+    const role = userProfile?.role?.toLowerCase?.() || '';
+    if (LEGACY_STAFF_ROLES.includes(role)) return true;
+    return permissoesResolvidas.has(permissao);
   };
 
   // Define qual escola está "ligada" na sessão, para quem atua em mais de uma.
@@ -426,6 +473,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signInWithGoogle,
     logout,
     hasAccess,
+    hasPermissao,
     setEscolaAtiva,
   };
 

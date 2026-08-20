@@ -29,8 +29,12 @@ export function UsuariosTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const { user, userProfile, hasAccess } = useAuth();
+  const { user, userProfile, hasAccess, hasPermissao } = useAuth();
   const { toast } = useToast();
+  const podeCriar = hasPermissao('criar_usuarios');
+  const podeEditar = hasPermissao('editar_usuarios');
+  const podeExcluir = hasPermissao('excluir_usuarios');
+  const podeAlterarPerfil = hasPermissao('alterar_perfil_usuario');
 
   // Verificar se o usuário tem permissão para gerenciar usuários. Antes isso
   // era travado em role === 'administrador' na unha, ignorando por completo o
@@ -311,10 +315,12 @@ export function UsuariosTab() {
                 Usuários ativos no sistema
               </CardDescription>
             </div>
-            <Button onClick={handleAddUser}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Adicionar Usuário
-            </Button>
+            {podeCriar && (
+              <Button onClick={handleAddUser}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Adicionar Usuário
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -387,21 +393,25 @@ export function UsuariosTab() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditUser(usuario)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteUser(usuario.id)}
-                        disabled={usuario.id === userProfile?.id}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {podeEditar && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditUser(usuario)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {podeExcluir && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteUser(usuario.id)}
+                          disabled={usuario.id === userProfile?.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -481,6 +491,7 @@ export function UsuariosTab() {
                     ...editingUser,
                     role: value
                   })}
+                  disabled={!podeAlterarPerfil}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -493,6 +504,11 @@ export function UsuariosTab() {
                     ))}
                   </SelectContent>
                 </Select>
+                {!podeAlterarPerfil && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Você não tem permissão para alterar o perfil de acesso deste usuário.
+                  </p>
+                )}
               </div>
 
               <div>

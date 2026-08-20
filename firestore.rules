@@ -13,14 +13,6 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && getUserRole() in ['administrador', 'admin'];
-    }
-
-    function isStaff() {
-      return isAuthenticated() && getUserRole() in ['administrador', 'admin', 'diretor', 'secretario', 'coordenador'];
-    }
-
     // Permissões de um perfil de acesso customizado (perfis-acesso/{perfilId}),
     // incluindo 1 nível de herança (herdarDe). O app cliente resolve herança
     // recursiva sem limite (useAuth.tsx); aqui resolvemos só perfil + pai direto
@@ -45,13 +37,32 @@ service cloud.firestore {
       return proprias.concat(herdadas);
     }
 
+    // Token coringa: um perfil de acesso com '*'/'tudo'/'todos'/'all' entre as
+    // permissões vira superadmin por DADO, não por nome de papel — é o que
+    // substitui a checagem hardcoded de role no cliente (useAuth.tsx). Ver
+    // hasWildcardAccess lá.
+    function hasWildcard() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/perfis-acesso/$(getUserRole())) &&
+        permissoesDoPerfil(getUserRole()).hasAny(['*', 'tudo', 'todos', 'all']);
+    }
+
+    function isAdmin() {
+      return (isAuthenticated() && getUserRole() in ['administrador', 'admin']) || hasWildcard();
+    }
+
+    function isStaff() {
+      return isAuthenticated() && getUserRole() in ['administrador', 'admin', 'diretor', 'secretario', 'coordenador'];
+    }
+
     // Libera acesso a quem tem `permissao` marcada no perfil de acesso
     // atribuído (users/{uid}.role guarda o ID do perfil), independente de
     // `role` ser um papel legado ou o ID de um perfil customizado.
-    // Administrador sempre passa. Se o perfil não existir (ex.: `role` é um
-    // papel legado como "diretor"), permissoesDoPerfil() falha o get() e a
-    // expressão cai no fallback `false` do "in" — por isso combinamos com
-    // isStaff() nos pontos de uso, para não quebrar contas com papel legado.
+    // Administrador (ou coringa) sempre passa. Se o perfil não existir (ex.:
+    // `role` é um papel legado como "diretor"), permissoesDoPerfil() falha o
+    // get() e a expressão cai no fallback `false` do "in" — por isso
+    // combinamos com isStaff() nos pontos de uso, para não quebrar contas com
+    // papel legado.
     function hasPermissao(permissao) {
       return isAdmin() || (
         isAuthenticated() &&
@@ -61,52 +72,88 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────
-    // User profiles – owner, admin, or perfil com gerenciar_usuarios
+    // User profiles – owner, admin, ou perfil com a permissão granular certa.
     // ──────────────────────────────────────────────
     match /users/{userId} {
-      // Leitura também liberada a quem gerencia fidelidade: é de lá que o
-      // diálogo "Novo Usuário" da aba Fidelidade escolhe a conta do
-      // Responsável em vez de aceitar nome/e-mail digitados à mão.
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || hasPermissao('gerenciar_usuarios') || hasPermissao('gerenciar_fidelidade'));
-      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || hasPermissao('gerenciar_usuarios'));
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || hasPermissao('gerenciar_usuarios'));
-      allow delete: if isAdmin();
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId || isAdmin() || hasPermissao('visualizar_usuarios')
+      );
+      allow create: if isAuthenticated() && (
+        request.auth.uid == userId || isAdmin() || hasPermissao('criar_usuarios')
+      );
+      // Trocar o campo `role` (o próprio ou o de outra conta) é uma ação
+      // sensível separada de editar dados básicos — exige alterar_perfil_usuario
+      // (ou ser admin). Achado revisando esta regra: antes, o próprio usuário
+      // podia mudar seu próprio `role` livremente por auto-edição (auth.uid ==
+      // userId sem nenhuma restrição de campo) — isso tornaria essa permissão
+      // nova inútil (bastava se autopromover), então a mesma trava vale para
+      // auto-edição também, não só para edição de terceiros.
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        ((request.auth.uid == userId || hasPermissao('editar_usuarios')) && (
+          request.resource.data.role == resource.data.role || hasPermissao('alterar_perfil_usuario')
+        ))
+      );
+      allow delete: if isAdmin() || hasPermissao('excluir_usuarios');
     }
 
     // ──────────────────────────────────────────────
-    // Access profiles – read for authenticated, write for admin
+    // Access profiles – read for authenticated, write for admin/wildcard ou
+    // permissão granular própria. Atenção: criar_perfis/editar_perfis é uma
+    // permissão de escalação de privilégio (quem edita perfis pode se
+    // auto-conceder mais acesso) — conceder com parcimônia.
     // ──────────────────────────────────────────────
     match /perfis-acesso/{perfilId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow create: if isAdmin() || hasPermissao('criar_perfis');
+      allow update: if isAdmin() || hasPermissao('editar_perfis');
+      allow delete: if isAdmin() || hasPermissao('excluir_perfis');
     }
 
     // ──────────────────────────────────────────────
-    // Schools – public read (needed for public enrollment), staff write
+    // Schools – public read (needed for public enrollment), staff/permissão write.
+    // "ativar_escolas" só libera alternar o campo `ativa` isoladamente;
+    // "ativar_modulos_escola"/"desativar_modulos_escola" só liberam mexer em
+    // `modulosHabilitados` isoladamente (ModulosTab.tsx).
     // ──────────────────────────────────────────────
     match /escolas/{escolaId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('criar_escolas');
+      allow update: if isStaff() || hasPermissao('editar_escolas') || (
+        hasPermissao('ativar_escolas') &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ativa'])
+      ) || (
+        (hasPermissao('ativar_modulos_escola') || hasPermissao('desativar_modulos_escola')) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['modulosHabilitados'])
+      );
+      allow delete: if isStaff() || hasPermissao('excluir_escolas');
     }
 
     // ──────────────────────────────────────────────
     // Networks (redes) – groups schools under a shared module package.
-    // Write restricted to admin: which modules a network has bought is
-    // operator territory, not day-to-day staff (see Fase 4/5 do plano de
-    // instalação por escola/rede).
+    // Write restringido a admin/coringa por padrão (operator territory), mas
+    // agora delegável via permissão granular própria.
     // ──────────────────────────────────────────────
     match /redes/{redeId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow create: if isAdmin() || hasPermissao('criar_redes');
+      allow update: if isAdmin() || hasPermissao('editar_redes') || (
+        (hasPermissao('ativar_modulos_rede') || hasPermissao('desativar_modulos_rede')) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['modulosHabilitados'])
+      );
+      allow delete: if isAdmin() || hasPermissao('excluir_redes');
     }
 
     // ──────────────────────────────────────────────
-    // Classes/Turmas – public read (needed for enrollment), staff write
+    // Classes/Turmas – public read (needed for enrollment), staff/permissão write.
+    // Delete sempre foi mais restrito (admin-only) — excluir_turmas é o
+    // equivalente granular disso, não abre pra isStaff() geral.
     // ──────────────────────────────────────────────
     match /turmas/{turmaId} {
       allow read: if isAuthenticated();
-      allow create, update: if isStaff();
-      allow delete: if isAdmin();
+      allow create: if isStaff() || hasPermissao('criar_turmas');
+      allow update: if isStaff() || hasPermissao('editar_turmas');
+      allow delete: if isAdmin() || hasPermissao('excluir_turmas');
     }
 
     // ──────────────────────────────────────────────
@@ -115,16 +162,18 @@ service cloud.firestore {
     match /estudantes/{estudanteId} {
       allow read: if isAuthenticated() && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       allow create: if isAuthenticated(); // anonymous can create during enrollment
-      allow update, delete: if isStaff();
+      allow update: if isStaff() || hasPermissao('editar_alunos');
+      allow delete: if isStaff() || hasPermissao('excluir_alunos');
     }
 
     // ──────────────────────────────────────────────
-    // Enrollments – authenticated create, staff manage
+    // Enrollments – authenticated create, staff/permissão manage
     // ──────────────────────────────────────────────
     match /matriculas/{matriculaId} {
       allow read: if isAuthenticated() && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
       allow create: if isAuthenticated(); // anonymous can create during enrollment
-      allow update, delete: if isStaff();
+      allow update: if isStaff() || hasPermissao('editar_matriculas');
+      allow delete: if isStaff() || hasPermissao('excluir_matriculas');
     }
 
     // ──────────────────────────────────────────────
@@ -132,7 +181,9 @@ service cloud.firestore {
     // ──────────────────────────────────────────────
     match /disciplinas/{disciplinaId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('criar_disciplinas');
+      allow update: if isStaff() || hasPermissao('editar_disciplinas');
+      allow delete: if isStaff() || hasPermissao('excluir_disciplinas');
     }
 
     // ──────────────────────────────────────────────
@@ -140,7 +191,9 @@ service cloud.firestore {
     // ──────────────────────────────────────────────
     match /professores/{professorId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('criar_professores');
+      allow update: if isStaff() || hasPermissao('editar_professores');
+      allow delete: if isStaff() || hasPermissao('excluir_professores');
     }
 
     // ──────────────────────────────────────────────
@@ -152,32 +205,57 @@ service cloud.firestore {
     // ──────────────────────────────────────────────
     match /registros-frequencia/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('registrar_frequencia');
     }
 
     match /registros-notas/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('registrar_notas');
     }
 
     // ──────────────────────────────────────────────
-    // Loyalty program — isStaff() (papel legado) OU perfil customizado com a
-    // permissão gerenciar_fidelidade (ex.: um Diretor cujo perfil de acesso
-    // não usa mais o papel legado "diretor" como valor de `role`).
+    // Loyalty program — isStaff() (papel legado) OU permissão granular de
+    // Fidelidade (ver src/types/index.ts). fidelidade_transacoes/
+    // fidelidade_usuarios ganham também um caminho estreito de autoatendimento
+    // pro check-in de evento creditar pontos pro próprio usuário (ver
+    // CheckinEvento.tsx) — antes disso, um responsável escaneando o próprio QR
+    // sempre falhava silenciosamente por exigir permissão de staff.
     // ──────────────────────────────────────────────
+    // Sem exceção de autoatendimento aqui de propósito: um increment livre em
+    // saldoPontos, sem nada que amarre o valor a um evento real, seria
+    // fabricável pelo próprio usuário chamando updateDoc direto (bypassando o
+    // app). O autoatendimento seguro fica só na criação da transação abaixo
+    // (com ID determinístico, valor travado no evento e create-only —
+    // impossível de repetir ou fabricar); a atualização do saldo em si
+    // continua exigindo staff/permissão, ver nota em CheckinEvento.tsx.
     match /fidelidade_usuarios/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
+      allow write: if isStaff() || hasPermissao('fidelidade_creditar_pontos') || hasPermissao('fidelidade_gerenciar_resgates');
     }
 
     match /fidelidade_transacoes/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
+      // Autoatendimento: só cria uma transação de crédito de check-in pro
+      // próprio uid, com ID determinístico "{eventoId}_{uid}" (evita duplicar
+      // o crédito — create falha se o doc já existir), valor batendo com o
+      // que o evento realmente credita, e só depois de já existir o check-in
+      // correspondente (também com ID determinístico).
+      allow create: if isStaff() || hasPermissao('fidelidade_creditar_pontos') || hasPermissao('fidelidade_gerenciar_resgates') || (
+        isAuthenticated() &&
+        request.resource.data.usuarioId == request.auth.uid &&
+        request.resource.data.tipo == 'credito' &&
+        request.resource.data.categoria == 'participacao' &&
+        docId == request.resource.data.referenciaId + '_' + request.auth.uid &&
+        exists(/databases/$(database)/documents/checkins-eventos/$(docId)) &&
+        exists(/databases/$(database)/documents/eventos/$(request.resource.data.referenciaId)) &&
+        request.resource.data.quantidade == get(/databases/$(database)/documents/eventos/$(request.resource.data.referenciaId)).data.pontosCreditar
+      );
+      allow update, delete: if isStaff() || hasPermissao('fidelidade_creditar_pontos') || hasPermissao('fidelidade_gerenciar_resgates');
     }
 
     match /fidelidade_recompensas/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
+      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_recompensas');
     }
 
     // Nome corrigido: FidelidadeTab.tsx grava em "fidelidade_pedidos", não "fidelidade_resgates".
@@ -186,40 +264,51 @@ service cloud.firestore {
     // pra fabricar um pedido mais barato do que ele é. Nenhum ponto é debitado
     // aqui: o débito só acontece quando o staff aprova (ver
     // FidelidadeTab.tsx -> handleProcessarPedido), que é o ponto de confiança
-    // real do fluxo — por isso update/delete continuam staff-only.
+    // real do fluxo — por isso update/delete continuam staff/permissão-only.
     match /fidelidade_pedidos/{docId} {
       allow read: if isAuthenticated();
-      allow create: if isStaff() || hasPermissao('gerenciar_fidelidade') || (
+      allow create: if isStaff() || hasPermissao('fidelidade_gerenciar_resgates') || (
         isAuthenticated() &&
         request.resource.data.usuarioId == request.auth.uid &&
         request.resource.data.status == 'pendente' &&
         request.resource.data.pontosUtilizados == get(/databases/$(database)/documents/fidelidade_recompensas/$(request.resource.data.recompensaId)).data.pontosNecessarios
       );
-      allow update, delete: if isStaff() || hasPermissao('gerenciar_fidelidade');
+      allow update, delete: if isStaff() || hasPermissao('fidelidade_gerenciar_resgates');
     }
 
     match /fidelidade_eventos/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
+      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_eventos');
     }
 
     match /fidelidade_checkins/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || hasPermissao('gerenciar_fidelidade');
+      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_eventos');
+    }
+
+    // Configuração compartilhada do programa (validade/alerta de expiração de
+    // pontos). Substitui o antigo "fidelidade_config" por usuário (bug: cada
+    // staff tinha sua própria cópia privada em users/{uid}/fidelidade_config,
+    // então não existia de fato uma config única do programa).
+    match /configuracoes/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff() || hasPermissao('fidelidade_configurar_expiracao');
     }
 
     // ──────────────────────────────────────────────
-    // Events – public read for check-in page, staff write
+    // Events – public read for check-in page, staff/permissão write. Check-in
+    // em si continua aberto a qualquer autenticado (é o próprio usuário se
+    // registrando no evento).
     // ──────────────────────────────────────────────
     match /eventos/{eventoId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_eventos');
     }
 
     match /checkins-eventos/{checkinId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated(); // anonymous can check in
-      allow update, delete: if isStaff();
+      allow update, delete: if isStaff() || hasPermissao('fidelidade_gerenciar_eventos');
     }
 
     // ──────────────────────────────────────────────
@@ -227,22 +316,30 @@ service cloud.firestore {
     // ──────────────────────────────────────────────
     match /cursosEAD/{cursoId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('criar_cursos_ead');
+      allow update: if isStaff() || hasPermissao('editar_cursos_ead');
+      allow delete: if isStaff() || hasPermissao('excluir_cursos_ead');
     }
 
     match /modulosEAD/{moduloId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('criar_modulos_ead');
+      allow update: if isStaff() || hasPermissao('editar_modulos_ead');
+      allow delete: if isStaff() || hasPermissao('excluir_modulos_ead');
     }
 
     match /aulasEAD/{aulaId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('criar_aulas_ead');
+      allow update: if isStaff() || hasPermissao('editar_aulas_ead');
+      allow delete: if isStaff() || hasPermissao('excluir_aulas_ead');
     }
 
     match /matriculasEAD/{matriculaId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create: if isStaff() || hasPermissao('criar_matriculas_ead');
+      allow update: if isStaff() || hasPermissao('editar_matriculas_ead');
+      allow delete: if isStaff() || hasPermissao('excluir_matriculas_ead');
     }
 
     // ──────────────────────────────────────────────
@@ -251,12 +348,12 @@ service cloud.firestore {
     // ──────────────────────────────────────────────
     match /fidelidade_parceiros/{parceiroId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_parceiros');
     }
 
     match /fidelidade_vouchers/{voucherId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_parceiros');
     }
 
     // ──────────────────────────────────────────────
@@ -264,7 +361,7 @@ service cloud.firestore {
     // ──────────────────────────────────────────────
     match /horarios-gerados/{horarioId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow write: if isStaff() || hasPermissao('gerar_horarios');
     }
 
     // ──────────────────────────────────────────────
