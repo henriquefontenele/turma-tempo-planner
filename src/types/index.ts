@@ -170,16 +170,8 @@ export interface UserProfile {
   mustResetPassword?: boolean;
 }
 
-export type Permissao = 
-  | 'gerenciar_usuarios'
-  | 'gerenciar_perfis'
+export type Permissao =
   | 'configuracoes_sistema'
-  | 'gerenciar_escolas'
-  | 'gerenciar_turmas'
-  | 'gerenciar_disciplinas'
-  | 'gerenciar_professores'
-  | 'gerenciar_alunos'
-  | 'gerenciar_matriculas'
   | 'gerar_horarios'
   | 'visualizar_horarios'
   | 'gerenciar_academico'
@@ -188,14 +180,105 @@ export type Permissao =
   | 'registrar_notas'
   | 'visualizar_notas'
   | 'acessar_relatorios'
-  | 'gerenciar_cursos_ead'
-  | 'gerenciar_modulos_ead'
-  | 'gerenciar_aulas_ead'
-  | 'gerenciar_matriculas_ead'
   | 'acessar_relatorios_ead'
-  | 'gerenciar_fidelidade'
-  | 'gerenciar_eventos'
-  | 'gerenciar_modulos';
+
+  // ── Redes ───────────────────────────────────────────────────────────────
+  | 'visualizar_redes'
+  | 'criar_redes'
+  | 'editar_redes'
+  | 'excluir_redes'
+
+  // ── Escolas ─────────────────────────────────────────────────────────────
+  | 'visualizar_escolas'
+  | 'criar_escolas'
+  | 'editar_escolas'
+  | 'excluir_escolas'
+  | 'ativar_escolas'
+
+  // ── Turmas ──────────────────────────────────────────────────────────────
+  | 'visualizar_turmas'
+  | 'criar_turmas'
+  | 'editar_turmas'
+  | 'excluir_turmas'
+
+  // ── Disciplinas ─────────────────────────────────────────────────────────
+  | 'visualizar_disciplinas'
+  | 'criar_disciplinas'
+  | 'editar_disciplinas'
+  | 'excluir_disciplinas'
+
+  // ── Professores ─────────────────────────────────────────────────────────
+  | 'visualizar_professores'
+  | 'criar_professores'
+  | 'editar_professores'
+  | 'excluir_professores'
+
+  // ── Alunos (estudantes) ─────────────────────────────────────────────────
+  | 'visualizar_alunos'
+  | 'criar_alunos'
+  | 'editar_alunos'
+  | 'excluir_alunos'
+
+  // ── Matrículas ──────────────────────────────────────────────────────────
+  | 'visualizar_matriculas'
+  | 'criar_matriculas'
+  | 'editar_matriculas'
+  | 'excluir_matriculas'
+
+  // ── EAD: Cursos ─────────────────────────────────────────────────────────
+  | 'visualizar_cursos_ead'
+  | 'criar_cursos_ead'
+  | 'editar_cursos_ead'
+  | 'excluir_cursos_ead'
+
+  // ── EAD: Módulos ────────────────────────────────────────────────────────
+  | 'visualizar_modulos_ead'
+  | 'criar_modulos_ead'
+  | 'editar_modulos_ead'
+  | 'excluir_modulos_ead'
+
+  // ── EAD: Aulas ──────────────────────────────────────────────────────────
+  | 'visualizar_aulas_ead'
+  | 'criar_aulas_ead'
+  | 'editar_aulas_ead'
+  | 'excluir_aulas_ead'
+
+  // ── EAD: Matrículas ─────────────────────────────────────────────────────
+  | 'visualizar_matriculas_ead'
+  | 'criar_matriculas_ead'
+  | 'editar_matriculas_ead'
+  | 'excluir_matriculas_ead'
+
+  // ── Usuários ────────────────────────────────────────────────────────────
+  | 'visualizar_usuarios'
+  | 'criar_usuarios'
+  | 'editar_usuarios'
+  | 'excluir_usuarios'
+  | 'alterar_perfil_usuario'
+
+  // ── Módulos (instalação por rede/escola) ───────────────────────────────
+  | 'visualizar_instalacao_modulos'
+  | 'ativar_modulos_rede'
+  | 'desativar_modulos_rede'
+  | 'ativar_modulos_escola'
+  | 'desativar_modulos_escola'
+
+  // ── Perfis de Acesso ────────────────────────────────────────────────────
+  | 'visualizar_perfis'
+  | 'criar_perfis'
+  | 'editar_perfis'
+  | 'excluir_perfis'
+
+  // ── Fidelidade (granular — substitui gerenciar_fidelidade/gerenciar_eventos) ──
+  | 'fidelidade_visualizar_extrato'
+  | 'fidelidade_creditar_pontos'
+  | 'fidelidade_visualizar_resgates'
+  | 'fidelidade_gerenciar_resgates'
+  | 'fidelidade_gerenciar_recompensas'
+  | 'fidelidade_configurar_expiracao'
+  | 'fidelidade_gerenciar_eventos'
+  | 'fidelidade_visualizar_parceiros'
+  | 'fidelidade_gerenciar_parceiros';
 
 export interface PerfilAcesso {
   id: string;

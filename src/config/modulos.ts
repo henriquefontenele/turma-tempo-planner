@@ -41,29 +41,33 @@ export interface ModuloDef {
 }
 
 export const MODULOS: ModuloDef[] = [
-  // CADASTRO
-  { id: 'disciplinas', grupo: 'CADASTRO', label: 'Disciplinas', emoji: '📚', permissoes: ['gerenciar_disciplinas'] },
-  { id: 'professores', grupo: 'CADASTRO', label: 'Professores', emoji: '👨‍🏫', permissoes: ['gerenciar_professores'] },
-  { id: 'turmas', grupo: 'CADASTRO', label: 'Turmas', emoji: '🎓', permissoes: ['gerenciar_turmas'] },
-  { id: 'escolas', grupo: 'CADASTRO', label: 'Escolas', emoji: '🏫', permissoes: ['gerenciar_escolas'] },
+  // CADASTRO — cada módulo lista suas 4-5 permissões granulares
+  // (visualizar/criar/editar/excluir[/ativar]), OU entre elas — qualquer uma
+  // já libera a aba, o botão específico depende de hasPermissao() dentro do
+  // componente. Os antigos "gerenciar_X" foram removidos (migrados nos
+  // perfis existentes antes da remoção — ver _migrar-permissoes-legado.mjs).
+  { id: 'disciplinas', grupo: 'CADASTRO', label: 'Disciplinas', emoji: '📚', permissoes: ['visualizar_disciplinas', 'criar_disciplinas', 'editar_disciplinas', 'excluir_disciplinas'] },
+  { id: 'professores', grupo: 'CADASTRO', label: 'Professores', emoji: '👨‍🏫', permissoes: ['visualizar_professores', 'criar_professores', 'editar_professores', 'excluir_professores'] },
+  { id: 'turmas', grupo: 'CADASTRO', label: 'Turmas', emoji: '🎓', permissoes: ['visualizar_turmas', 'criar_turmas', 'editar_turmas', 'excluir_turmas'] },
+  { id: 'escolas', grupo: 'CADASTRO', label: 'Escolas', emoji: '🏫', permissoes: ['visualizar_escolas', 'criar_escolas', 'editar_escolas', 'excluir_escolas', 'ativar_escolas'] },
   { id: 'config', grupo: 'CADASTRO', label: 'Turnos', emoji: '⚙️', permissoes: ['configuracoes_sistema'] },
 
   // USUÁRIOS
-  { id: 'usuarios', grupo: 'USUÁRIOS', label: 'Usuários', emoji: '👤', permissoes: ['gerenciar_usuarios'] },
-  { id: 'perfis', grupo: 'USUÁRIOS', label: 'Perfis de Acesso', emoji: '🔒', permissoes: ['gerenciar_perfis'] },
+  { id: 'usuarios', grupo: 'USUÁRIOS', label: 'Usuários', emoji: '👤', permissoes: ['visualizar_usuarios', 'criar_usuarios', 'editar_usuarios', 'excluir_usuarios', 'alterar_perfil_usuario'] },
+  { id: 'perfis', grupo: 'USUÁRIOS', label: 'Perfis de Acesso', emoji: '🔒', permissoes: ['visualizar_perfis', 'criar_perfis', 'editar_perfis', 'excluir_perfis'] },
 
   // SISTEMA — território do operador do sistema (Fase 4 do plano de instalação por escola/rede)
-  { id: 'modulos', grupo: 'SISTEMA', label: 'Módulos', titulo: 'Instalação de Módulos', emoji: '📦', permissoes: ['gerenciar_modulos'] },
+  { id: 'modulos', grupo: 'SISTEMA', label: 'Módulos', titulo: 'Instalação de Módulos', emoji: '📦', permissoes: ['visualizar_instalacao_modulos', 'ativar_modulos_rede', 'desativar_modulos_rede', 'ativar_modulos_escola', 'desativar_modulos_escola'] },
 
   // MATRÍCULA
-  { id: 'alunos', grupo: 'MATRÍCULA', label: 'Alunos', emoji: '👥', permissoes: ['gerenciar_alunos'] },
-  { id: 'matricula', grupo: 'MATRÍCULA', label: 'Matrícula', emoji: '📝', permissoes: ['gerenciar_matriculas'] },
+  { id: 'alunos', grupo: 'MATRÍCULA', label: 'Alunos', emoji: '👥', permissoes: ['visualizar_alunos', 'criar_alunos', 'editar_alunos', 'excluir_alunos'] },
+  { id: 'matricula', grupo: 'MATRÍCULA', label: 'Matrícula', emoji: '📝', permissoes: ['visualizar_matriculas', 'criar_matriculas', 'editar_matriculas', 'excluir_matriculas'] },
 
   // EAD
-  { id: 'cursos-ead', grupo: 'EAD', label: 'Cursos', titulo: 'Cursos EAD', emoji: '🎬', permissoes: ['gerenciar_cursos_ead'] },
-  { id: 'modulos-ead', grupo: 'EAD', label: 'Módulos', titulo: 'Módulos EAD', emoji: '📚', permissoes: ['gerenciar_modulos_ead'] },
-  { id: 'aulas-ead', grupo: 'EAD', label: 'Aulas', titulo: 'Aulas EAD', emoji: '📹', permissoes: ['gerenciar_aulas_ead'] },
-  { id: 'matriculas-ead', grupo: 'EAD', label: 'Matrículas', titulo: 'Matrículas EAD', emoji: '👨‍💻', permissoes: ['gerenciar_matriculas_ead'] },
+  { id: 'cursos-ead', grupo: 'EAD', label: 'Cursos', titulo: 'Cursos EAD', emoji: '🎬', permissoes: ['visualizar_cursos_ead', 'criar_cursos_ead', 'editar_cursos_ead', 'excluir_cursos_ead'] },
+  { id: 'modulos-ead', grupo: 'EAD', label: 'Módulos', titulo: 'Módulos EAD', emoji: '📚', permissoes: ['visualizar_modulos_ead', 'criar_modulos_ead', 'editar_modulos_ead', 'excluir_modulos_ead'] },
+  { id: 'aulas-ead', grupo: 'EAD', label: 'Aulas', titulo: 'Aulas EAD', emoji: '📹', permissoes: ['visualizar_aulas_ead', 'criar_aulas_ead', 'editar_aulas_ead', 'excluir_aulas_ead'] },
+  { id: 'matriculas-ead', grupo: 'EAD', label: 'Matrículas', titulo: 'Matrículas EAD', emoji: '👨‍💻', permissoes: ['visualizar_matriculas_ead', 'criar_matriculas_ead', 'editar_matriculas_ead', 'excluir_matriculas_ead'] },
 
   // HORÁRIO
   { id: 'gerador', grupo: 'HORÁRIO', label: 'Gerador', titulo: 'Gerador de Horários', emoji: '🎯', permissoes: ['gerar_horarios'] },
@@ -75,12 +79,10 @@ export const MODULOS: ModuloDef[] = [
   { id: 'notas', grupo: 'ACADÊMICO', label: 'Notas', emoji: '📝', permissoes: ['registrar_notas', 'visualizar_notas'] },
   { id: 'relatorios', grupo: 'ACADÊMICO', label: 'Relatórios', emoji: '📊', permissoes: ['acessar_relatorios', 'acessar_relatorios_ead'], idFiltroFuncionalidade: 'relatorio' },
 
-  // FIDELIDADE
-  { id: 'fidelidade', grupo: 'FIDELIDADE', label: 'Programa', titulo: 'Programa de Fidelidade', emoji: '🏆', permissoes: ['gerenciar_fidelidade'] },
-  // Parceiros nunca teve permissão própria mapeada — hoje só aparece para administrador. Preservado como está.
-  { id: 'parceiros', grupo: 'FIDELIDADE', label: 'Parceiros', titulo: 'Parceiros & Vouchers', emoji: '🤝', permissoes: [] },
-  // Quem tem gerenciar_fidelidade também vê Eventos hoje — preservado de propósito (era assim em useAuth).
-  { id: 'eventos', grupo: 'FIDELIDADE', label: 'Eventos', titulo: 'Eventos e Check-in', emoji: '📅', permissoes: ['gerenciar_fidelidade', 'gerenciar_eventos'] },
+  // FIDELIDADE — granularizado por ação (ver Permissao).
+  { id: 'fidelidade', grupo: 'FIDELIDADE', label: 'Programa', titulo: 'Programa de Fidelidade', emoji: '🏆', permissoes: ['fidelidade_visualizar_extrato', 'fidelidade_creditar_pontos', 'fidelidade_visualizar_resgates', 'fidelidade_gerenciar_resgates', 'fidelidade_gerenciar_recompensas', 'fidelidade_configurar_expiracao'] },
+  { id: 'parceiros', grupo: 'FIDELIDADE', label: 'Parceiros', titulo: 'Parceiros & Vouchers', emoji: '🤝', permissoes: ['fidelidade_visualizar_parceiros', 'fidelidade_gerenciar_parceiros'] },
+  { id: 'eventos', grupo: 'FIDELIDADE', label: 'Eventos', titulo: 'Eventos e Check-in', emoji: '📅', permissoes: ['fidelidade_gerenciar_eventos'] },
 ];
 
 /** Todos os IDs de módulo, na ordem do catálogo. */

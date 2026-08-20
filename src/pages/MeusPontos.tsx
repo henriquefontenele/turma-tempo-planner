@@ -41,7 +41,7 @@ export default function MeusPontos() {
       return;
     }
 
-    // Documento próprio: id = uid da conta (ver FidelidadeTab.tsx -> handleAddUsuario)
+    // Documento próprio: id = uid da conta
     const unsubUsuario = onSnapshot(doc(db, 'fidelidade_usuarios', user.uid), (snap) => {
       setFidUsuario(snap.exists() ? ({ id: snap.id, ...snap.data() } as UsuarioFidelidade) : null);
     });

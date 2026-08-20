@@ -1,6 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { useFirestoreCollection, useFirestoreDoc } from '@/hooks/useFirestore';
+import { useFirestoreCollection, useFirestoreSharedDoc } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Gift, Users, Award, History, CheckCircle, XCircle, Clock, Coins, Store, Ticket, Settings, AlertTriangle, Timer, Search, Filter, ChevronLeft, ChevronRight, CalendarIcon, BarChart3 } from 'lucide-react';
@@ -22,34 +20,16 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate, ConfiguracaoFidelidade } from '@/types/fidelidade';
 import type { Parceiro, Voucher } from '@/types/parceiros';
-import type { Estudante, UserProfile, PerfilAcesso } from '@/types';
 import type { Evento, CheckinEvento } from '@/types/eventos';
 import FidelidadeDashboard from './FidelidadeDashboard';
 
-// Nome do perfil de acesso (Perfis de Acesso) usado para identificar contas de
-// responsáveis dentro da coleção "users". Comparado sem acento/maiúsculas para
-// tolerar "Responsável", "responsavel", etc. — quem cria o perfil digita o nome
-// livremente na tela de Perfis, então não há um ID fixo pra depender aqui.
-const NOME_PERFIL_RESPONSAVEL = 'responsavel';
-// Remove marcas diacríticas (acentos) após normalize('NFD') comparando os
-// code points diretamente, em vez de um character class de regex com
-// caracteres combinantes literais no código-fonte (fácil de corromper ao
-// copiar/colar). Faixa U+0300–U+036F = "Combining Diacritical Marks".
-const normalizarNomePerfil = (nome: string) =>
-  Array.from(nome.trim().toLowerCase().normalize('NFD'))
-    .filter((ch) => {
-      const code = ch.codePointAt(0) || 0;
-      return code < 0x0300 || code > 0x036f;
-    })
-    .join('');
-
-interface FidelidadeTabProps {
-  estudantes: Estudante[];
-}
-
-export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
+export default function FidelidadeTab() {
   const { toast } = useToast();
-  const { userProfile } = useAuth();
+  const { userProfile, hasPermissao } = useAuth();
+  const podeCreditarPontos = hasPermissao('fidelidade_creditar_pontos');
+  const podeGerenciarRecompensas = hasPermissao('fidelidade_gerenciar_recompensas');
+  const podeGerenciarResgates = hasPermissao('fidelidade_gerenciar_resgates');
+  const podeConfigurarExpiracao = hasPermissao('fidelidade_configurar_expiracao');
   
   const { data: usuarios, addItem: addUsuario, updateItem: updateUsuario, deleteItem: deleteUsuario } = 
     useFirestoreCollection<UsuarioFidelidade>('fidelidade_usuarios');
@@ -63,38 +43,21 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     useFirestoreCollection<Parceiro>('fidelidade_parceiros');
   const { addItem: addVoucher } = 
     useFirestoreCollection<Voucher>('fidelidade_vouchers');
-  const { data: configFidelidade, updateData: setConfigFidelidade } = 
-    useFirestoreDoc<ConfiguracaoFidelidade>('fidelidade_config', {
-      id: 'config',
+  // Config compartilhada do programa (era gravada por conta de staff em
+  // users/{uid}/fidelidade_config — cada staff tinha sua própria cópia
+  // privada, então "quem edita a expiração global" nunca foi de fato
+  // aplicável). Agora um doc único em configuracoes/fidelidade.
+  const { data: configFidelidade, updateData: setConfigFidelidade } =
+    useFirestoreSharedDoc<ConfiguracaoFidelidade>('configuracoes', 'fidelidade', {
+      id: 'fidelidade',
       validadePontosMeses: 12,
       diasAlertaExpiracao: 30,
       expiracoesAtivadas: false,
     });
   const { data: eventosData } = useFirestoreCollection<Evento>('fidelidade_eventos');
   const { data: checkinsData } = useFirestoreCollection<CheckinEvento>('fidelidade_checkins');
-  // Fonte dos "usuários do programa": contas reais do sistema (coleção
-  // "users", cadastradas em Usuários) com o perfil "Responsável", em vez de um
-  // formulário de nome/e-mail solto dentro da própria fidelidade — evita
-  // duplicidade e e-mail digitado errado (ver handleAddUsuario mais abaixo).
-  const { data: usuariosSistema } = useFirestoreCollection<UserProfile>('users');
-  const { data: perfisAcesso } = useFirestoreCollection<PerfilAcesso>('perfis-acesso');
-
-  const perfilResponsavelId = useMemo(
-    () => perfisAcesso.find(p => normalizarNomePerfil(p.nome) === NOME_PERFIL_RESPONSAVEL)?.id,
-    [perfisAcesso]
-  );
-
-  // Responsáveis já cadastrados no sistema (Usuários) que ainda não têm
-  // registro no programa de fidelidade (o id do registro de fidelidade é o
-  // mesmo uid da conta do sistema — ver handleAddUsuario).
-  const candidatosResponsavel = useMemo(() => {
-    if (!perfilResponsavelId) return [];
-    const jaVinculados = new Set(usuarios.map(u => u.id));
-    return usuariosSistema.filter(u => u.role === perfilResponsavelId && u.ativo && !jaVinculados.has(u.id));
-  }, [usuariosSistema, perfilResponsavelId, usuarios]);
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [creditarDialogOpen, setCreditarDialogOpen] = useState(false);
   const [recompensaDialogOpen, setRecompensaDialogOpen] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState<UsuarioFidelidade | null>(null);
@@ -109,13 +72,6 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
   const extratoPorPagina = 15;
 
   // Form states
-  const [novoUsuario, setNovoUsuario] = useState({
-    usuarioSistemaId: '',
-    telefone: '',
-    cpf: '',
-    estudanteIds: [] as string[]
-  });
-
   const [creditoPontos, setCreditoPontos] = useState({
     usuarioId: '',
     quantidade: 0,
@@ -131,37 +87,6 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
     quantidadeDisponivel: 0,
     parceiroId: ''
   });
-
-  const handleAddUsuario = async () => {
-    if (!novoUsuario.usuarioSistemaId) {
-      toast({ title: 'Erro', description: 'Selecione um responsável cadastrado em Usuários', variant: 'destructive' });
-      return;
-    }
-
-    const usuarioSistema = usuariosSistema.find(u => u.id === novoUsuario.usuarioSistemaId);
-    if (!usuarioSistema) return;
-
-    // Grava com o mesmo UID da conta do sistema como ID do documento (em vez
-    // de deixar o Firestore gerar um ID aleatório via addItem/addDoc). Isso é
-    // o que permite o crédito automático de pontos no check-in de evento
-    // (CheckinEvento.tsx) e uma futura tela do próprio responsável localizarem
-    // o registro direto por ID, sem depender de comparar e-mails.
-    await setDoc(doc(db, 'fidelidade_usuarios', usuarioSistema.id), {
-      nome: usuarioSistema.nome,
-      email: usuarioSistema.email,
-      telefone: novoUsuario.telefone,
-      cpf: novoUsuario.cpf,
-      estudanteIds: novoUsuario.estudanteIds,
-      saldoPontos: 0,
-      pontosTotaisAcumulados: 0,
-      dataCadastro: new Date().toISOString(),
-      ativo: true
-    });
-
-    setNovoUsuario({ usuarioSistemaId: '', telefone: '', cpf: '', estudanteIds: [] });
-    setDialogOpen(false);
-    toast({ title: 'Sucesso', description: 'Usuário cadastrado com sucesso!' });
-  };
 
   const handleCreditarPontos = async () => {
     if (!creditoPontos.usuarioId || creditoPontos.quantidade <= 0) {
@@ -570,8 +495,8 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
             Dashboard
           </TabsTrigger>
           <TabsTrigger value="usuarios" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Usuários
+            <Coins className="w-4 h-4" />
+            Creditar Pontos
           </TabsTrigger>
           <TabsTrigger value="recompensas" className="flex items-center gap-2">
             <Gift className="w-4 h-4" />
@@ -603,100 +528,21 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
           />
         </TabsContent>
 
-        {/* Tab Usuários */}
+        {/* Tab Creditar Pontos — cadastro de usuário e vínculo com Perfis de
+            Acesso foram removidos daqui; usuarios/{id} de fidelidade_usuarios
+            hoje só é criado direto no Firestore. */}
         <TabsContent value="usuarios" className="space-y-4">
+          {!podeCreditarPontos ? (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                Você não tem permissão para creditar pontos (fidelidade_creditar_pontos).
+              </CardContent>
+            </Card>
+          ) : (
           <div className="flex gap-2">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="w-4 h-4 mr-2" /> Novo Usuário</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Cadastrar Usuário</DialogTitle>
-                  <DialogDescription>Vincule ao programa de fidelidade um responsável já cadastrado em Usuários</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  {!perfilResponsavelId ? (
-                    <p className="text-sm text-muted-foreground">
-                      Nenhum perfil de acesso chamado "Responsável" foi encontrado. Crie-o em{' '}
-                      <strong>Perfis de Acesso</strong> (sem nenhuma permissão marcada) e depois cadastre a
-                      conta da pessoa em <strong>Usuários</strong> com esse perfil antes de vinculá-la aqui.
-                    </p>
-                  ) : candidatosResponsavel.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Não há nenhum responsável cadastrado em <strong>Usuários</strong> (perfil "Responsável")
-                      que ainda não esteja no programa de fidelidade. Cadastre a conta da pessoa em Usuários
-                      primeiro.
-                    </p>
-                  ) : (
-                    <div>
-                      <Label>Responsável (cadastrado em Usuários) *</Label>
-                      <Select
-                        value={novoUsuario.usuarioSistemaId || 'none'}
-                        onValueChange={(value) => setNovoUsuario({
-                          ...novoUsuario,
-                          usuarioSistemaId: value === 'none' ? '' : value
-                        })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um responsável" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Selecione um responsável</SelectItem>
-                          {candidatosResponsavel.map(u => (
-                            <SelectItem key={u.id} value={u.id}>{u.nome} ({u.email})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <div>
-                    <Label>Telefone</Label>
-                    <Input 
-                      value={novoUsuario.telefone} 
-                      onChange={e => setNovoUsuario({...novoUsuario, telefone: e.target.value})}
-                      placeholder="(00) 00000-0000"
-                    />
-                  </div>
-                  <div>
-                    <Label>CPF</Label>
-                    <Input 
-                      value={novoUsuario.cpf} 
-                      onChange={e => setNovoUsuario({...novoUsuario, cpf: e.target.value})}
-                      placeholder="000.000.000-00"
-                    />
-                  </div>
-                  <div>
-                    <Label>Filhos Matriculados</Label>
-                    <Select
-                      value={novoUsuario.estudanteIds[0] || 'none'}
-                      onValueChange={(value) => setNovoUsuario({
-                        ...novoUsuario, 
-                        estudanteIds: value === 'none' ? [] : [value]
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um estudante" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum selecionado</SelectItem>
-                        {estudantes.map(e => (
-                          <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                  <Button onClick={handleAddUsuario} disabled={!novoUsuario.usuarioSistemaId}>Cadastrar</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
             <Dialog open={creditarDialogOpen} onOpenChange={setCreditarDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline"><Coins className="w-4 h-4 mr-2" /> Creditar Pontos</Button>
+                <Button><Coins className="w-4 h-4 mr-2" /> Creditar Pontos</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -773,55 +619,12 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
               </DialogContent>
             </Dialog>
           </div>
-
-          <Card>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead className="text-right">Saldo</TableHead>
-                    <TableHead className="text-right">Total Acumulado</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {usuarios.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-gray-500">
-                        Nenhum usuário cadastrado no programa
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    usuarios.map(usuario => (
-                      <TableRow key={usuario.id}>
-                        <TableCell className="font-medium">{usuario.nome}</TableCell>
-                        <TableCell>{usuario.email}</TableCell>
-                        <TableCell>{usuario.telefone || '-'}</TableCell>
-                        <TableCell className="text-right font-bold text-green-600">
-                          {usuario.saldoPontos.toLocaleString()} pts
-                        </TableCell>
-                        <TableCell className="text-right text-gray-600">
-                          {usuario.pontosTotaisAcumulados.toLocaleString()} pts
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={usuario.ativo ? 'default' : 'secondary'}>
-                            {usuario.ativo ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          )}
         </TabsContent>
 
         {/* Tab Recompensas */}
         <TabsContent value="recompensas" className="space-y-4">
+          {podeGerenciarRecompensas && (
           <Dialog open={recompensaDialogOpen} onOpenChange={setRecompensaDialogOpen}>
             <DialogTrigger asChild>
               <Button><Plus className="w-4 h-4 mr-2" /> Nova Recompensa</Button>
@@ -915,6 +718,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recompensas.length === 0 ? (
@@ -953,22 +757,24 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                         {recompensa.quantidadeDisponivel === 0 ? 'Ilimitado' : `${recompensa.quantidadeDisponivel} disponíveis`}
                       </div>
                     </div>
+                    {podeGerenciarRecompensas && (
                     <div className="mt-4 flex gap-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => updateRecompensa(recompensa.id, { ativa: !recompensa.ativa })}
                       >
                         {recompensa.ativa ? 'Desativar' : 'Ativar'}
                       </Button>
-                      <Button 
-                        variant="destructive" 
+                      <Button
+                        variant="destructive"
                         size="sm"
                         onClick={() => deleteRecompensa(recompensa.id)}
                       >
                         Excluir
                       </Button>
                     </div>
+                    )}
                   </CardContent>
                 </Card>
               ))
@@ -1024,31 +830,37 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                           </TableCell>
                           <TableCell>{getStatusBadge(pedido.status)}</TableCell>
                           <TableCell>
-                            {pedido.status === 'pendente' && (
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleProcessarPedido(pedido, 'aprovado')}
-                                >
-                                  Aprovar
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive"
-                                  onClick={() => handleProcessarPedido(pedido, 'cancelado')}
-                                >
-                                  Cancelar
-                                </Button>
-                              </div>
-                            )}
-                            {pedido.status === 'aprovado' && (
-                              <Button 
-                                size="sm"
-                                onClick={() => handleProcessarPedido(pedido, 'entregue')}
-                              >
-                                Marcar Entregue
-                              </Button>
+                            {!podeGerenciarResgates ? (
+                              <span className="text-xs text-muted-foreground">Somente leitura</span>
+                            ) : (
+                              <>
+                                {pedido.status === 'pendente' && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleProcessarPedido(pedido, 'aprovado')}
+                                    >
+                                      Aprovar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleProcessarPedido(pedido, 'cancelado')}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                )}
+                                {pedido.status === 'aprovado' && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleProcessarPedido(pedido, 'entregue')}
+                                  >
+                                    Marcar Entregue
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </TableCell>
                         </TableRow>
@@ -1060,8 +872,60 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
           </Card>
         </TabsContent>
 
-        {/* Tab Extrato Detalhado */}
+        {/* Tab Extrato: saldo por usuário + extrato detalhado unificados */}
         <TabsContent value="extrato" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Saldo por Usuário
+              </CardTitle>
+              <CardDescription>Saldo atual e total acumulado de cada participante do programa</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="text-right">Total Acumulado</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {usuarios.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-gray-500">
+                        Nenhum usuário cadastrado no programa
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    usuarios.map(usuario => (
+                      <TableRow key={usuario.id}>
+                        <TableCell className="font-medium">{usuario.nome}</TableCell>
+                        <TableCell>{usuario.email}</TableCell>
+                        <TableCell>{usuario.telefone || '-'}</TableCell>
+                        <TableCell className="text-right font-bold text-green-600">
+                          {usuario.saldoPontos.toLocaleString()} pts
+                        </TableCell>
+                        <TableCell className="text-right text-gray-600">
+                          {usuario.pontosTotaisAcumulados.toLocaleString()} pts
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={usuario.ativo ? 'default' : 'secondary'}>
+                            {usuario.ativo ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1347,6 +1211,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                 </div>
                 <Switch
                   checked={configFidelidade.expiracoesAtivadas}
+                  disabled={!podeConfigurarExpiracao}
                   onCheckedChange={(checked) => setConfigFidelidade({
                     ...configFidelidade,
                     expiracoesAtivadas: checked
@@ -1363,6 +1228,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                         type="number"
                         min={1}
                         max={60}
+                        disabled={!podeConfigurarExpiracao}
                         value={configFidelidade.validadePontosMeses}
                         onChange={(e) => setConfigFidelidade({
                           ...configFidelidade,
@@ -1379,6 +1245,7 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                         type="number"
                         min={1}
                         max={90}
+                        disabled={!podeConfigurarExpiracao}
                         value={configFidelidade.diasAlertaExpiracao}
                         onChange={(e) => setConfigFidelidade({
                           ...configFidelidade,
@@ -1400,9 +1267,11 @@ export default function FidelidadeTab({ estudantes }: FidelidadeTabProps) {
                 </div>
               )}
 
-              <Button onClick={handleSalvarConfigFidelidade}>
-                Salvar Configurações
-              </Button>
+              {podeConfigurarExpiracao && (
+                <Button onClick={handleSalvarConfigFidelidade}>
+                  Salvar Configurações
+                </Button>
+              )}
             </CardContent>
           </Card>
 

@@ -55,6 +55,58 @@ export function useFirestoreDoc<T>(collectionName: string, initialValue: T) {
   return { data, updateData, loading, error };
 }
 
+// Hook para um documento único COMPARTILHADO (ex: configurações de um
+// programa, não de uma pessoa) — diferente de useFirestoreDoc acima, que
+// grava por baixo de users/{uid}/... (uma cópia privada por conta). Usar
+// quando a configuração deve ser a mesma pra todo mundo que olhar/editar.
+export function useFirestoreSharedDoc<T>(collectionName: string, docId: string, initialValue: T) {
+  const { user } = useAuth();
+  const [data, setData] = useState<T>(initialValue);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setData(initialValue);
+      setLoading(false);
+      return;
+    }
+
+    const docRef = doc(db, collectionName, docId);
+
+    const unsubscribe = onSnapshot(docRef,
+      (docSnap) => {
+        setData(docSnap.exists() ? (docSnap.data() as T) : initialValue);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error(`Erro ao carregar ${collectionName}/${docId}:`, err);
+        setError(err.message);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, collectionName, docId]);
+
+  const updateData = async (newData: T) => {
+    if (!user) return;
+
+    try {
+      const docRef = doc(db, collectionName, docId);
+      await setDoc(docRef, newData);
+      setData(newData);
+    } catch (err: any) {
+      console.error(`Erro ao salvar ${collectionName}/${docId}:`, err);
+      setError(err.message);
+    }
+  };
+
+  return { data, updateData, loading, error };
+}
+
 // Hook para coleções globais (ex: escolas, turmas, etc.)
 export function useFirestoreCollection<T extends { id: string }>(
   collectionName: string, 

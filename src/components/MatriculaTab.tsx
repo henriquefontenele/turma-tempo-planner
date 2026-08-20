@@ -8,11 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 import { Escola, Turma, Estudante, Matricula } from '@/types';
 import { UserPlus, FileText, Download, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 export function MatriculaTab() {
+  const { hasPermissao } = useAuth();
+  // editar_matriculas e excluir_matriculas se aplicam a outras telas, não a esta
+  const podeCriar = hasPermissao('criar_matriculas');
   const { data: escolas } = useFirestoreCollection<Escola>('escolas', true);
   const { data: turmas, updateItem: updateTurma } = useFirestoreCollection<Turma>('turmas', true);
   const { data: estudantes, addItem: addEstudante } = useFirestoreCollection<Estudante>('estudantes', true);
@@ -242,6 +246,7 @@ export function MatriculaTab() {
 
   return (
     <div className="space-y-6">
+      {podeCriar && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -249,8 +254,8 @@ export function MatriculaTab() {
               <UserPlus className="w-5 h-5" />
               Matrícula de Estudante
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={abrirMatriculaPublica}
               className="flex items-center gap-2"
             >
@@ -399,6 +404,7 @@ export function MatriculaTab() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* Lista de Matrículas */}
       <Card>

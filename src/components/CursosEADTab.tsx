@@ -32,9 +32,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Video, Plus, Pencil, Trash2, Eye, Globe } from 'lucide-react';
 import { CursoEAD, Escola, Disciplina } from '@/types';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 
 export function CursosEADTab() {
   const { toast } = useToast();
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_cursos_ead');
+  const podeEditar = hasPermissao('editar_cursos_ead');
+  const podeExcluir = hasPermissao('excluir_cursos_ead');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCurso, setEditingCurso] = useState<CursoEAD | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -192,12 +197,14 @@ export function CursosEADTab() {
               <CardDescription>Gerencie os cursos de educação a distância</CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              {podeCriar && (
               <DialogTrigger asChild>
                 <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Curso
                 </Button>
               </DialogTrigger>
+              )}
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
@@ -427,6 +434,7 @@ export function CursosEADTab() {
                               <Globe className="w-4 h-4" />
                             </Button>
                           )}
+                          {podeEditar && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -434,6 +442,8 @@ export function CursosEADTab() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
+                          )}
+                          {podeExcluir && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -441,6 +451,7 @@ export function CursosEADTab() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

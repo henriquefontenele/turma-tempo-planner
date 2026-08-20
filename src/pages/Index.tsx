@@ -41,7 +41,7 @@ const tabNames: Record<string, string> = {
 };
 
 export default function Index() {
-  const { user, userProfile, logout, setEscolaAtiva, hasAccess } = useAuth();
+  const { user, userProfile, logout, setEscolaAtiva, hasAccess, hasPermissao } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -137,14 +137,20 @@ export default function Index() {
       return atual && JSON.stringify(atual) !== JSON.stringify(novo);
     });
 
-    for (const professor of professoresAdicionados) {
-      await addProfessor(professor);
+    if (hasPermissao('criar_professores')) {
+      for (const professor of professoresAdicionados) {
+        await addProfessor(professor);
+      }
     }
-    for (const professor of professoresRemovidos) {
-      await deleteProfessor(professor.id);
+    if (hasPermissao('excluir_professores')) {
+      for (const professor of professoresRemovidos) {
+        await deleteProfessor(professor.id);
+      }
     }
-    for (const professor of professoresAtualizados) {
-      await updateProfessor(professor.id, professor);
+    if (hasPermissao('editar_professores')) {
+      for (const professor of professoresAtualizados) {
+        await updateProfessor(professor.id, professor);
+      }
     }
   };
 
@@ -160,11 +166,15 @@ export default function Index() {
     for (const estudante of estudantesAdicionados) {
       await addEstudante(estudante);
     }
-    for (const estudante of estudantesRemovidos) {
-      await deleteEstudante(estudante.id);
+    if (hasPermissao('excluir_alunos')) {
+      for (const estudante of estudantesRemovidos) {
+        await deleteEstudante(estudante.id);
+      }
     }
-    for (const estudante of estudantesAtualizados) {
-      await updateEstudante(estudante.id, estudante);
+    if (hasPermissao('editar_alunos')) {
+      for (const estudante of estudantesAtualizados) {
+        await updateEstudante(estudante.id, estudante);
+      }
     }
   };
 
@@ -180,8 +190,12 @@ export default function Index() {
     for (const matricula of matriculasAdicionadas) {
       await addMatricula(matricula);
     }
-    for (const matricula of matriculasRemovidas) {
-      await deleteMatricula(matricula.id);
+    // As remoções aqui vêm da exclusão em cascata de um aluno (AlunosTab),
+    // então exigem a mesma permissão de excluir alunos.
+    if (hasPermissao('excluir_alunos')) {
+      for (const matricula of matriculasRemovidas) {
+        await deleteMatricula(matricula.id);
+      }
     }
     for (const matricula of matriculasAtualizadas) {
       await updateMatricula(matricula.id, matricula);
@@ -333,7 +347,7 @@ export default function Index() {
       case 'matriculas-ead':
         return <MatriculasEADTab />;
       case 'fidelidade':
-        return <FidelidadeTab estudantes={estudantes} />;
+        return <FidelidadeTab />;
       case 'parceiros':
         return <ParceirosTab />;
       case 'eventos':

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -94,12 +94,16 @@ export default function CheckinEventoPage() {
         return;
       }
 
-      // Verificar check-in duplicado
-      const checkinsRef = collection(db, 'checkins-eventos');
-      const q = query(checkinsRef, where('eventoId', '==', evento.id), where('usuarioId', '==', user!.uid));
-      const existentes = await getDocs(q);
+      // ID determinístico "{eventoId}_{uid}" — permite checar duplicidade com
+      // um getDoc direto (em vez de query) e é o que a regra do Firestore usa
+      // pra provar, sem confiar em mais nada vindo do cliente, que este
+      // check-in é genuíno e só pode acontecer uma vez (create falha se o doc
+      // já existir). Ver firestore.rules: fidelidade_transacoes.
+      const checkinId = `${evento.id}_${user!.uid}`;
+      const checkinRef = doc(db, 'checkins-eventos', checkinId);
+      const checkinExistente = await getDoc(checkinRef);
 
-      if (!existentes.empty) {
+      if (checkinExistente.exists()) {
         setResultado('duplicado');
         setMensagem('Você já fez check-in neste evento!');
         return;
@@ -115,21 +119,35 @@ export default function CheckinEventoPage() {
         dataCheckin: new Date().toISOString(),
       };
 
-      await addDoc(collection(db, 'checkins-eventos'), checkin);
+      await setDoc(checkinRef, checkin);
 
       // Creditar pontos no programa de fidelidade. O registro de fidelidade é
-      // gravado com o mesmo UID da conta do sistema (ver FidelidadeTab.tsx ->
-      // handleAddUsuario), então buscamos direto pelo UID em vez de comparar
-      // e-mail — evita o falso-positivo de "check-in deu pontos" quando o
-      // e-mail cadastrado divergia por digitação/capitalização, e some com o
-      // problema de qual conta creditar quando há e-mails duplicados.
-      let pontosCreditados = false;
+      // gravado com o mesmo UID da conta do sistema, então buscamos direto
+      // pelo UID em vez de comparar e-mail — evita o falso-positivo de
+      // "check-in deu pontos" quando o e-mail cadastrado divergia por
+      // digitação/capitalização, e some com o problema de qual conta
+      // creditar quando há e-mails duplicados.
+      //
+      // O responsável fazendo o próprio check-in não tem (nem deveria ter)
+      // permissão de staff. A regra abre uma exceção estreita e autoatendida
+      // só pra registrar a TRANSAÇÃO (ID determinístico, só pode ser criada
+      // uma vez, valor travado no que o evento credita, exige o check-in já
+      // existir) — isso já garante um registro auditável e correto. Mas
+      // ATUALIZAR o saldo em cache de fidelidade_usuarios continua exigindo
+      // staff/permissão de propósito: um increment livre sem essa trava seria
+      // fabricável direto pelo cliente. Por isso os dois passos são
+      // separados: a transação quase sempre é registrada, o saldo em si só
+      // reflete na hora se quem faz o check-in for staff (ex.: alguém da
+      // secretaria escaneando pro responsável) — senão fica para conciliação
+      // manual, e a UI avisa isso explicitamente em vez de fingir que creditou.
+      let transacaoRegistrada = false;
+      let saldoAtualizado = false;
       try {
         const fidUsuarioRef = doc(db, 'fidelidade_usuarios', user!.uid);
         const fidUsuarioSnap = await getDoc(fidUsuarioRef);
 
         if (fidUsuarioSnap.exists()) {
-          await addDoc(collection(db, 'fidelidade_transacoes'), {
+          await setDoc(doc(db, 'fidelidade_transacoes', checkinId), {
             usuarioId: user!.uid,
             tipo: 'credito',
             quantidade: evento.pontosCreditar,
@@ -139,22 +157,31 @@ export default function CheckinEventoPage() {
             criadoPor: 'sistema',
             dataCriacao: new Date().toISOString(),
           });
+          transacaoRegistrada = true;
 
-          await updateDoc(fidUsuarioRef, {
-            saldoPontos: increment(evento.pontosCreditar),
-            pontosTotaisAcumulados: increment(evento.pontosCreditar),
-          });
-          pontosCreditados = true;
+          try {
+            await updateDoc(fidUsuarioRef, {
+              saldoPontos: increment(evento.pontosCreditar),
+              pontosTotaisAcumulados: increment(evento.pontosCreditar),
+            });
+            saldoAtualizado = true;
+          } catch (e) {
+            // Esperado quando quem faz check-in é o próprio responsável (sem
+            // permissão de staff) — a transação acima já ficou registrada.
+            console.warn('Transação registrada, mas saldo em cache não pôde ser atualizado agora:', e);
+          }
         }
       } catch (e) {
-        console.warn('Pontos de fidelidade não creditados:', e);
+        console.warn('Check-in não pôde ser vinculado ao programa de fidelidade:', e);
       }
 
       setResultado('sucesso');
       setMensagem(
-        pontosCreditados
+        saldoAtualizado
           ? `Check-in realizado! Você ganhou ${evento.pontosCreditar} pontos.`
-          : 'Check-in realizado! (Você não está cadastrado no programa de fidelidade, então nenhum ponto foi creditado.)'
+          : transacaoRegistrada
+            ? `Check-in realizado! O crédito de ${evento.pontosCreditar} pontos foi registrado e será confirmado no seu saldo pela secretaria em breve.`
+            : 'Check-in realizado! (Você não está cadastrado no programa de fidelidade, então nenhum ponto foi creditado.)'
       );
     } catch (err) {
       console.error('Erro ao processar QR Code:', err);

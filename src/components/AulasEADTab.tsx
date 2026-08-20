@@ -32,9 +32,14 @@ import { useToast } from '@/hooks/use-toast';
 import { PlayCircle, Plus, Pencil, Trash2, FileText, Link2, HelpCircle } from 'lucide-react';
 import { AulaEAD, CursoEAD, ModuloEAD } from '@/types';
 import { useFirestoreCollection } from '@/hooks/useFirestore';
+import { useAuth } from '@/hooks/useAuth';
 
 export function AulasEADTab() {
   const { toast } = useToast();
+  const { hasPermissao } = useAuth();
+  const podeCriar = hasPermissao('criar_aulas_ead');
+  const podeEditar = hasPermissao('editar_aulas_ead');
+  const podeExcluir = hasPermissao('excluir_aulas_ead');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAula, setEditingAula] = useState<AulaEAD | null>(null);
   const [selectedCurso, setSelectedCurso] = useState('all');
@@ -190,12 +195,14 @@ export function AulasEADTab() {
               <CardDescription>Gerencie as aulas e materiais dos cursos</CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              {podeCriar && (
               <DialogTrigger asChild>
                 <Button onClick={() => setIsDialogOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nova Aula
                 </Button>
               </DialogTrigger>
+              )}
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
@@ -423,6 +430,7 @@ export function AulasEADTab() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
+                          {podeEditar && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -430,6 +438,8 @@ export function AulasEADTab() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
+                          )}
+                          {podeExcluir && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -437,6 +447,7 @@ export function AulasEADTab() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
