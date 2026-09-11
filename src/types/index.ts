@@ -270,11 +270,14 @@ export type Permissao =
   | 'excluir_perfis'
 
   // ── Fidelidade (granular — substitui gerenciar_fidelidade/gerenciar_eventos) ──
+  | 'fidelidade_visualizar_dashboard'
   | 'fidelidade_visualizar_extrato'
   | 'fidelidade_creditar_pontos'
   | 'fidelidade_visualizar_resgates'
   | 'fidelidade_gerenciar_resgates'
+  | 'fidelidade_visualizar_recompensas'
   | 'fidelidade_gerenciar_recompensas'
+  | 'fidelidade_visualizar_historico'
   | 'fidelidade_configurar_expiracao'
   | 'fidelidade_gerenciar_eventos'
   | 'fidelidade_visualizar_parceiros'

@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   doc,
-  getDoc,
   onSnapshot,
   collection,
   query,
   where,
-  addDoc,
+  setDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,17 +15,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { Coins, Gift, History, Store, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Coins, Gift, History, Store, Clock, CheckCircle, XCircle, Copy, Ticket } from 'lucide-react';
 import type { UsuarioFidelidade, TransacaoPontos, Recompensa, PedidoResgate } from '@/types/fidelidade';
+import { calcularSaldoDeTransacoes } from '@/lib/fidelidadeSaldo';
+import { generateVoucherCode, podeResgatarRecompensa } from '@/lib/fidelidadeResgate';
 
-// Portal do próprio responsável — visualização de saldo/extrato e pedido de
-// resgate de recompensas. Antes desta tela não existia NENHUM caminho, em
-// lugar nenhum do app, para o usuário do programa de fidelidade ver os
-// próprios pontos ou trocar por recompensa (o admin só conseguia aprovar
-// pedidos que já existissem, mas nada os criava). O pedido criado aqui não
-// debita pontos na hora — o débito só acontece quando o staff aprova, ver
-// FidelidadeTab.tsx -> handleProcessarPedido e a regra de fidelidade_pedidos
-// em firestore.rules.
+// Portal do responsável: resgate imediato gera voucher + débito no extrato.
+// O parceiro (escola ou loja) valida o código em /parceiro.
 export default function MeusPontos() {
   const { user, loading } = useAuth();
   const [fidUsuario, setFidUsuario] = useState<UsuarioFidelidade | null | undefined>(undefined);
@@ -34,6 +29,12 @@ export default function MeusPontos() {
   const [recompensas, setRecompensas] = useState<Recompensa[]>([]);
   const [pedidos, setPedidos] = useState<PedidoResgate[]>([]);
   const [resgatando, setResgatando] = useState<string | null>(null);
+  const [ultimoCodigo, setUltimoCodigo] = useState<string | null>(null);
+
+  const saldo = useMemo(
+    () => (user ? calcularSaldoDeTransacoes(transacoes, user.uid) : { saldoPontos: 0, pontosTotaisAcumulados: 0 }),
+    [transacoes, user]
+  );
 
   useEffect(() => {
     if (!user) {
@@ -41,7 +42,6 @@ export default function MeusPontos() {
       return;
     }
 
-    // Documento próprio: id = uid da conta
     const unsubUsuario = onSnapshot(doc(db, 'fidelidade_usuarios', user.uid), (snap) => {
       setFidUsuario(snap.exists() ? ({ id: snap.id, ...snap.data() } as UsuarioFidelidade) : null);
     });
@@ -76,40 +76,75 @@ export default function MeusPontos() {
     };
   }, [user]);
 
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({ title: 'Copiado!', description: 'Código do voucher copiado.' });
+  };
+
   const handleResgatar = async (recompensa: Recompensa) => {
     if (!user || !fidUsuario) return;
-    if (fidUsuario.saldoPontos < recompensa.pontosNecessarios) {
-      toast({ title: 'Saldo insuficiente', description: 'Você não tem pontos suficientes para essa recompensa.', variant: 'destructive' });
+
+    const check = podeResgatarRecompensa(recompensa, user.uid, pedidos, saldo.saldoPontos);
+    if (!check.ok) {
+      toast({ title: 'Não foi possível resgatar', description: check.motivo, variant: 'destructive' });
       return;
     }
-    if (recompensa.quantidadeDisponivel > 0) {
-      const jaResgatados = pedidos.filter(
-        (p) => p.recompensaId === recompensa.id && p.status !== 'cancelado'
-      ).length;
-      if (jaResgatados >= recompensa.quantidadeDisponivel) {
-        toast({ title: 'Indisponível', description: 'Essa recompensa está sem estoque no momento.', variant: 'destructive' });
-        return;
-      }
-    }
+
+    const pedidoId = crypto.randomUUID();
+    const codigo = generateVoucherCode();
+    const agora = new Date().toISOString();
 
     setResgatando(recompensa.id);
     try {
-      await addDoc(collection(db, 'fidelidade_pedidos'), {
+      await setDoc(doc(db, 'fidelidade_pedidos', pedidoId), {
         usuarioId: user.uid,
         usuarioNome: fidUsuario.nome,
         recompensaId: recompensa.id,
         recompensaNome: recompensa.nome,
         pontosUtilizados: recompensa.pontosNecessarios,
-        status: 'pendente',
-        dataPedido: new Date().toISOString(),
-        // Firestore rejeita `undefined` como valor de campo — só inclui
-        // parceiroId/parceiroNome quando a recompensa realmente tem parceiro.
-        ...(recompensa.parceiroId ? { parceiroId: recompensa.parceiroId, parceiroNome: recompensa.parceiroNome || '' } : {}),
+        status: 'aprovado',
+        dataPedido: agora,
+        dataProcessamento: agora,
+        processadoPor: 'auto',
+        voucherCodigo: codigo,
+        parceiroId: recompensa.parceiroId,
+        parceiroNome: recompensa.parceiroNome,
       });
-      toast({ title: 'Pedido enviado!', description: `Seu pedido de "${recompensa.nome}" foi enviado e está aguardando aprovação.` });
+
+      await setDoc(doc(db, 'fidelidade_transacoes', `resgate_${pedidoId}`), {
+        usuarioId: user.uid,
+        tipo: 'debito',
+        quantidade: recompensa.pontosNecessarios,
+        descricao: `Resgate: ${recompensa.nome}`,
+        categoria: 'resgate',
+        referenciaId: pedidoId,
+        criadoPor: user.uid,
+        dataCriacao: agora,
+      });
+
+      await setDoc(doc(db, 'fidelidade_vouchers', `voucher_${pedidoId}`), {
+        codigo,
+        pedidoResgateId: pedidoId,
+        usuarioId: user.uid,
+        usuarioNome: fidUsuario.nome,
+        parceiroId: recompensa.parceiroId,
+        parceiroNome: recompensa.parceiroNome,
+        recompensaId: recompensa.id,
+        recompensaNome: recompensa.nome,
+        recompensaDescricao: recompensa.descricao || '',
+        pontosUtilizados: recompensa.pontosNecessarios,
+        status: 'ativo',
+        dataCriacao: agora,
+      });
+
+      setUltimoCodigo(codigo);
+      toast({
+        title: 'Voucher gerado!',
+        description: `Código ${codigo}. Apresente ao parceiro para validação.`,
+      });
     } catch (e) {
-      console.error('Erro ao pedir resgate:', e);
-      toast({ title: 'Erro', description: 'Não foi possível enviar o pedido. Tente novamente.', variant: 'destructive' });
+      console.error('Erro ao resgatar:', e);
+      toast({ title: 'Erro', description: 'Não foi possível concluir o resgate. Tente novamente.', variant: 'destructive' });
     } finally {
       setResgatando(null);
     }
@@ -117,9 +152,9 @@ export default function MeusPontos() {
 
   const getStatusBadge = (status: PedidoResgate['status']) => {
     const config = {
-      pendente: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Aguardando aprovação' },
-      aprovado: { color: 'bg-blue-100 text-blue-800', icon: CheckCircle, label: 'Aprovado' },
-      entregue: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Entregue' },
+      pendente: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Pendente' },
+      aprovado: { color: 'bg-blue-100 text-blue-800', icon: CheckCircle, label: 'Resgatado' },
+      entregue: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Utilizado' },
       cancelado: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Cancelado' },
     };
     const { color, icon: Icon, label } = config[status];
@@ -166,6 +201,8 @@ export default function MeusPontos() {
     );
   }
 
+  const recompensasAtivas = recompensas.filter((r) => r.ativa && r.parceiroId);
+
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -178,53 +215,72 @@ export default function MeusPontos() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Saldo disponível</p>
-              <p className="text-3xl font-bold text-green-600">{fidUsuario.saldoPontos.toLocaleString()} pts</p>
+              <p className="text-3xl font-bold text-green-600">{saldo.saldoPontos.toLocaleString()} pts</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total já acumulado</p>
-              <p className="text-3xl font-bold text-muted-foreground">{fidUsuario.pontosTotaisAcumulados.toLocaleString()} pts</p>
+              <p className="text-3xl font-bold text-muted-foreground">{saldo.pontosTotaisAcumulados.toLocaleString()} pts</p>
             </CardContent>
           </Card>
         </div>
 
+        {ultimoCodigo && (
+          <Card className="border-primary/40 bg-primary/5">
+            <CardContent className="pt-6 text-center space-y-2">
+              <Ticket className="w-8 h-8 mx-auto text-primary" />
+              <p className="text-sm text-muted-foreground">Seu voucher</p>
+              <div className="flex items-center justify-center gap-2">
+                <code className="text-2xl font-mono font-bold tracking-wider">{ultimoCodigo}</code>
+                <Button size="icon" variant="ghost" onClick={() => copyCode(ultimoCodigo)}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Apresente este código ao parceiro para validação.</p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg"><Gift className="w-5 h-5" /> Trocar por recompensa</CardTitle>
-            <CardDescription>Escolha uma recompensa e envie o pedido — a escola confirma a entrega.</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-lg"><Gift className="w-5 h-5" /> Trocar por voucher</CardTitle>
+            <CardDescription>
+              O resgate debita seus pontos na hora e gera um código. O parceiro valida o uso na loja/escola.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {recompensas.filter((r) => r.ativa).length === 0 ? (
+            {recompensasAtivas.length === 0 ? (
               <p className="text-sm text-muted-foreground col-span-full text-center py-4">Nenhuma recompensa disponível no momento.</p>
             ) : (
-              recompensas.filter((r) => r.ativa).map((r) => {
-                const semEstoque = r.quantidadeDisponivel > 0 &&
-                  pedidos.filter((p) => p.recompensaId === r.id && p.status !== 'cancelado').length >= r.quantidadeDisponivel;
-                const semSaldo = fidUsuario.saldoPontos < r.pontosNecessarios;
+              recompensasAtivas.map((r) => {
+                const check = podeResgatarRecompensa(r, user.uid, pedidos, saldo.saldoPontos);
+                const limiteUser = r.limitePorUsuario ?? 0;
                 return (
                   <Card key={r.id}>
                     <CardHeader>
                       <CardTitle className="text-base">{r.nome}</CardTitle>
                       <CardDescription>
                         {r.descricao || 'Sem descrição'}
-                        {r.parceiroNome && (
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            <Store className="w-3 h-3 mr-1" />{r.parceiroNome}
-                          </Badge>
-                        )}
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          <Store className="w-3 h-3 mr-1" />{r.parceiroNome}
+                        </Badge>
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="flex items-center gap-2 text-lg font-bold text-primary">
                         <Coins className="w-5 h-5" /> {r.pontosNecessarios.toLocaleString()} pts
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Estoque: {r.quantidadeDisponivel === 0 ? 'ilimitado' : r.quantidadeDisponivel}
+                        {limiteUser > 0 ? ` · Máx. ${limiteUser} por usuário` : ''}
+                      </p>
                       <Button
                         className="w-full"
-                        disabled={semSaldo || semEstoque || resgatando === r.id}
+                        disabled={!check.ok || resgatando === r.id}
                         onClick={() => handleResgatar(r)}
                       >
-                        {semEstoque ? 'Sem estoque' : semSaldo ? 'Pontos insuficientes' : resgatando === r.id ? 'Enviando...' : 'Resgatar'}
+                        {!check.ok ? check.motivo : resgatando === r.id ? 'Gerando...' : 'Resgatar voucher'}
                       </Button>
                     </CardContent>
                   </Card>
@@ -236,17 +292,18 @@ export default function MeusPontos() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg"><Gift className="w-5 h-5" /> Meus pedidos de resgate</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg"><Ticket className="w-5 h-5" /> Meus vouchers</CardTitle>
           </CardHeader>
           <CardContent>
             {pedidos.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Você ainda não pediu nenhuma recompensa.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">Você ainda não resgatou nenhum voucher.</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Recompensa</TableHead>
+                    <TableHead>Voucher</TableHead>
                     <TableHead className="text-right">Pontos</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -255,7 +312,22 @@ export default function MeusPontos() {
                   {pedidos.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell>{new Date(p.dataPedido).toLocaleDateString('pt-BR')}</TableCell>
-                      <TableCell>{p.recompensaNome}</TableCell>
+                      <TableCell>
+                        {p.recompensaNome}
+                        {p.parceiroNome && (
+                          <span className="block text-xs text-muted-foreground">{p.parceiroNome}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {p.voucherCodigo ? (
+                          <div className="flex items-center gap-1">
+                            <code className="font-mono text-xs font-bold">{p.voucherCodigo}</code>
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyCode(p.voucherCodigo!)}>
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : '—'}
+                      </TableCell>
                       <TableCell className="text-right">{p.pontosUtilizados} pts</TableCell>
                       <TableCell>{getStatusBadge(p.status)}</TableCell>
                     </TableRow>

@@ -162,16 +162,19 @@ const PERMISSOES_DISPONIVEIS: GrupoPermissoes[] = [
   {
     grupo: 'Fidelidade',
     subgrupos: [
-      { nome: 'Usuários', permissoes: [
-        { id: 'fidelidade_visualizar_extrato', label: 'Visualizar extrato e saldos' },
-        { id: 'fidelidade_creditar_pontos', label: 'Creditar pontos' },
-        { id: 'fidelidade_visualizar_resgates', label: 'Visualizar pedidos de resgate' },
-        { id: 'fidelidade_gerenciar_resgates', label: 'Aprovar/cancelar resgates' },
+      { nome: 'Programa (abas)', permissoes: [
+        { id: 'fidelidade_visualizar_dashboard', label: 'Aba Dashboard e cards de indicadores' },
+        { id: 'fidelidade_visualizar_extrato', label: 'Aba Extrato e saldos' },
+        { id: 'fidelidade_creditar_pontos', label: 'Aba Participantes — creditar pontos e cadastrar' },
+        { id: 'fidelidade_visualizar_resgates', label: 'Aba Resgates — somente leitura' },
+        { id: 'fidelidade_gerenciar_resgates', label: 'Aba Resgates — aprovar/cancelar' },
+        { id: 'fidelidade_visualizar_recompensas', label: 'Aba Recompensas — somente leitura' },
+        { id: 'fidelidade_gerenciar_recompensas', label: 'Aba Recompensas — criar/editar' },
+        { id: 'fidelidade_visualizar_historico', label: 'Aba Histórico (busca consolidada)' },
+        { id: 'fidelidade_configurar_expiracao', label: 'Aba Config — expiração de pontos' },
       ]},
-      { nome: 'Administrativo', permissoes: [
-        { id: 'fidelidade_gerenciar_recompensas', label: 'Gerenciar recompensas' },
-        { id: 'fidelidade_configurar_expiracao', label: 'Configurar expiração de pontos' },
-        { id: 'fidelidade_gerenciar_eventos', label: 'Gerenciar eventos' },
+      { nome: 'Eventos', permissoes: [
+        { id: 'fidelidade_gerenciar_eventos', label: 'Gerenciar eventos e check-in' },
       ]},
       { nome: 'Parceiros', permissoes: [
         { id: 'fidelidade_visualizar_parceiros', label: 'Visualizar parceiros e vouchers' },

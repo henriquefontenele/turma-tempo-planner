@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Store, Ticket, Eye, CheckCircle, XCircle, Clock, Copy } from 'lucide-react';
 import type { Parceiro, Voucher } from '@/types/parceiros';
+import type { UserProfile } from '@/types';
 
 export default function ParceirosTab() {
   const { toast } = useToast();
@@ -26,6 +29,7 @@ export default function ParceirosTab() {
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
   const [editingParceiro, setEditingParceiro] = useState<Parceiro | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('todos');
+  const [contasSistema, setContasSistema] = useState<UserProfile[]>([]);
 
   const { data: parceiros, addItem: addParceiro, updateItem: updateParceiro, deleteItem: deleteParceiro } =
     useFirestoreCollection<Parceiro>('fidelidade_parceiros');
@@ -33,17 +37,35 @@ export default function ParceirosTab() {
     useFirestoreCollection<Voucher>('fidelidade_vouchers');
 
   const [novoParceiro, setNovoParceiro] = useState({
-    nome: '', contato: '', telefone: '', email: '', endereco: '', descricao: ''
+    nome: '', contato: '', telefone: '', email: '', endereco: '', descricao: '', userId: ''
   });
 
-  const resetForm = () => setNovoParceiro({ nome: '', contato: '', telefone: '', email: '', endereco: '', descricao: '' });
+  useEffect(() => {
+    if (!dialogOpen && !editDialogOpen) return;
+    void (async () => {
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        setContasSistema(snap.docs.map((d) => ({ id: d.id, ...d.data() } as UserProfile)));
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [dialogOpen, editDialogOpen]);
+
+  const resetForm = () => setNovoParceiro({ nome: '', contato: '', telefone: '', email: '', endereco: '', descricao: '', userId: '' });
 
   const handleAddParceiro = async () => {
     if (!novoParceiro.nome) {
       toast({ title: 'Erro', description: 'Nome é obrigatório', variant: 'destructive' });
       return;
     }
-    await addParceiro({ ...novoParceiro, ativo: true, dataCadastro: new Date().toISOString() });
+    const { userId, ...rest } = novoParceiro;
+    await addParceiro({
+      ...rest,
+      ...(userId ? { userId } : {}),
+      ativo: true,
+      dataCadastro: new Date().toISOString(),
+    });
     resetForm();
     setDialogOpen(false);
     toast({ title: 'Sucesso', description: 'Parceiro cadastrado!' });
@@ -94,6 +116,12 @@ export default function ParceirosTab() {
     );
   };
 
+  const nomeConta = (userId?: string) => {
+    if (!userId) return '—';
+    const c = contasSistema.find((u) => u.id === userId);
+    return c ? `${c.nome} (${c.email})` : userId.slice(0, 8) + '…';
+  };
+
   const filteredVouchers = filterStatus === 'todos' ? vouchers : vouchers.filter(v => v.status === filterStatus);
 
   const totalParceiros = parceiros.filter(p => p.ativo).length;
@@ -101,14 +129,28 @@ export default function ParceirosTab() {
   const vouchersAtivos = vouchers.filter(v => v.status === 'ativo').length;
   const vouchersUtilizados = vouchers.filter(v => v.status === 'utilizado').length;
 
+  const selectConta = (
+    value: string,
+    onChange: (userId: string) => void
+  ) => (
+    <Select value={value || 'none'} onValueChange={(v) => onChange(v === 'none' ? '' : v)}>
+      <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">Nenhuma (vincular depois)</SelectItem>
+        {contasSistema.filter((c) => c.ativo !== false).map((c) => (
+          <SelectItem key={c.id} value={c.id}>{c.nome} ({c.email})</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">🤝 Parceiros & Vouchers</h2>
-        <p className="text-gray-600">Gerencie parceiros comerciais e vouchers de resgate</p>
+        <p className="text-gray-600">Cadastre parceiros (incluindo a escola), vincule contas e acompanhe vouchers. Portal: /parceiro</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card><CardContent className="pt-6"><div className="flex items-center gap-4"><div className="p-3 bg-blue-100 rounded-full"><Store className="w-6 h-6 text-blue-600" /></div><div><p className="text-sm text-gray-600">Parceiros Ativos</p><p className="text-2xl font-bold">{totalParceiros}</p></div></div></CardContent></Card>
         <Card><CardContent className="pt-6"><div className="flex items-center gap-4"><div className="p-3 bg-green-100 rounded-full"><Ticket className="w-6 h-6 text-green-600" /></div><div><p className="text-sm text-gray-600">Total Vouchers</p><p className="text-2xl font-bold">{totalVouchers}</p></div></div></CardContent></Card>
@@ -122,7 +164,6 @@ export default function ParceirosTab() {
           <TabsTrigger value="vouchers" className="flex items-center gap-2"><Ticket className="w-4 h-4" />Vouchers</TabsTrigger>
         </TabsList>
 
-        {/* Tab Parceiros */}
         <TabsContent value="parceiros" className="space-y-4">
           {podeGerenciarParceiros && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -132,17 +173,21 @@ export default function ParceirosTab() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Cadastrar Parceiro</DialogTitle>
-                <DialogDescription>Adicione um parceiro comercial ao programa</DialogDescription>
+                <DialogDescription>Escola ou loja parceira. Vincule uma conta para o portal /parceiro.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div><Label>Nome da Loja *</Label><Input value={novoParceiro.nome} onChange={e => setNovoParceiro({...novoParceiro, nome: e.target.value})} placeholder="Nome do estabelecimento" /></div>
-                <div><Label>Pessoa de Contato</Label><Input value={novoParceiro.contato} onChange={e => setNovoParceiro({...novoParceiro, contato: e.target.value})} placeholder="Nome do responsável" /></div>
+                <div><Label>Nome *</Label><Input value={novoParceiro.nome} onChange={e => setNovoParceiro({...novoParceiro, nome: e.target.value})} placeholder="Nome do estabelecimento / escola" /></div>
+                <div><Label>Pessoa de Contato</Label><Input value={novoParceiro.contato} onChange={e => setNovoParceiro({...novoParceiro, contato: e.target.value})} /></div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Telefone</Label><Input value={novoParceiro.telefone} onChange={e => setNovoParceiro({...novoParceiro, telefone: e.target.value})} placeholder="(00) 00000-0000" /></div>
-                  <div><Label>Email</Label><Input value={novoParceiro.email} onChange={e => setNovoParceiro({...novoParceiro, email: e.target.value})} placeholder="email@loja.com" /></div>
+                  <div><Label>Telefone</Label><Input value={novoParceiro.telefone} onChange={e => setNovoParceiro({...novoParceiro, telefone: e.target.value})} /></div>
+                  <div><Label>Email</Label><Input value={novoParceiro.email} onChange={e => setNovoParceiro({...novoParceiro, email: e.target.value})} /></div>
                 </div>
-                <div><Label>Endereço</Label><Input value={novoParceiro.endereco} onChange={e => setNovoParceiro({...novoParceiro, endereco: e.target.value})} placeholder="Endereço completo" /></div>
-                <div><Label>Descrição</Label><Textarea value={novoParceiro.descricao} onChange={e => setNovoParceiro({...novoParceiro, descricao: e.target.value})} placeholder="Sobre o parceiro..." /></div>
+                <div><Label>Endereço</Label><Input value={novoParceiro.endereco} onChange={e => setNovoParceiro({...novoParceiro, endereco: e.target.value})} /></div>
+                <div><Label>Descrição</Label><Textarea value={novoParceiro.descricao} onChange={e => setNovoParceiro({...novoParceiro, descricao: e.target.value})} /></div>
+                <div>
+                  <Label>Conta vinculada (portal)</Label>
+                  {selectConta(novoParceiro.userId, (userId) => setNovoParceiro({ ...novoParceiro, userId }))}
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
@@ -152,7 +197,6 @@ export default function ParceirosTab() {
           </Dialog>
           )}
 
-          {/* Edit Dialog */}
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
             <DialogContent>
               <DialogHeader>
@@ -160,7 +204,7 @@ export default function ParceirosTab() {
               </DialogHeader>
               {editingParceiro && (
                 <div className="space-y-4">
-                  <div><Label>Nome da Loja *</Label><Input value={editingParceiro.nome} onChange={e => setEditingParceiro({...editingParceiro, nome: e.target.value})} /></div>
+                  <div><Label>Nome *</Label><Input value={editingParceiro.nome} onChange={e => setEditingParceiro({...editingParceiro, nome: e.target.value})} /></div>
                   <div><Label>Pessoa de Contato</Label><Input value={editingParceiro.contato} onChange={e => setEditingParceiro({...editingParceiro, contato: e.target.value})} /></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div><Label>Telefone</Label><Input value={editingParceiro.telefone} onChange={e => setEditingParceiro({...editingParceiro, telefone: e.target.value})} /></div>
@@ -168,6 +212,10 @@ export default function ParceirosTab() {
                   </div>
                   <div><Label>Endereço</Label><Input value={editingParceiro.endereco} onChange={e => setEditingParceiro({...editingParceiro, endereco: e.target.value})} /></div>
                   <div><Label>Descrição</Label><Textarea value={editingParceiro.descricao} onChange={e => setEditingParceiro({...editingParceiro, descricao: e.target.value})} /></div>
+                  <div>
+                    <Label>Conta vinculada (portal)</Label>
+                    {selectConta(editingParceiro.userId || '', (userId) => setEditingParceiro({ ...editingParceiro, userId: userId || undefined }))}
+                  </div>
                 </div>
               )}
               <DialogFooter>
@@ -184,22 +232,23 @@ export default function ParceirosTab() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Contato</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Conta portal</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {parceiros.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-gray-500">Nenhum parceiro cadastrado</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center text-gray-500">Nenhum parceiro cadastrado</TableCell></TableRow>
                   ) : (
                     parceiros.map(p => (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.nome}</TableCell>
-                        <TableCell>{p.contato || '-'}</TableCell>
-                        <TableCell>{p.telefone || '-'}</TableCell>
-                        <TableCell>{p.email || '-'}</TableCell>
+                        <TableCell>
+                          <div>{p.contato || '-'}</div>
+                          <div className="text-xs text-muted-foreground">{p.telefone || p.email || ''}</div>
+                        </TableCell>
+                        <TableCell className="text-sm">{p.userId ? nomeConta(p.userId) : <span className="text-muted-foreground">Sem vínculo</span>}</TableCell>
                         <TableCell><Badge variant={p.ativo ? 'default' : 'secondary'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge></TableCell>
                         <TableCell>
                           {podeGerenciarParceiros ? (
@@ -221,7 +270,6 @@ export default function ParceirosTab() {
           </Card>
         </TabsContent>
 
-        {/* Tab Vouchers */}
         <TabsContent value="vouchers" className="space-y-4">
           <div className="flex gap-2 items-center">
             <Label>Filtrar por status:</Label>
@@ -236,7 +284,6 @@ export default function ParceirosTab() {
             </Select>
           </div>
 
-          {/* Voucher detail dialog */}
           <Dialog open={voucherDetailOpen} onOpenChange={setVoucherDetailOpen}>
             <DialogContent>
               <DialogHeader>
@@ -257,19 +304,18 @@ export default function ParceirosTab() {
                     <div className="flex justify-between"><span className="text-gray-500">Usuário:</span><span className="font-medium">{selectedVoucher.usuarioNome}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Pontos:</span><span className="font-medium">{selectedVoucher.pontosUtilizados} pts</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">Status:</span>{getVoucherStatusBadge(selectedVoucher.status)}</div>
-                    <div className="flex justify-between"><span className="text-gray-500">Criado em:</span><span>{new Date(selectedVoucher.dataCriacao).toLocaleDateString('pt-BR')}</span></div>
-                    {selectedVoucher.dataUtilizacao && <div className="flex justify-between"><span className="text-gray-500">Utilizado em:</span><span>{new Date(selectedVoucher.dataUtilizacao).toLocaleDateString('pt-BR')}</span></div>}
                   </div>
-                  {selectedVoucher.recompensaDescricao && (
-                    <div className="p-3 bg-gray-50 rounded text-sm"><p className="text-gray-500 mb-1">Descrição da oferta:</p><p>{selectedVoucher.recompensaDescricao}</p></div>
-                  )}
                 </div>
               )}
             </DialogContent>
           </Dialog>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardHeader>
+              <CardTitle>Vouchers resgatados</CardTitle>
+              <CardDescription>Histórico global de vouchers do programa</CardDescription>
+            </CardHeader>
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>

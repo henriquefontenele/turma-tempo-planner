@@ -80,7 +80,7 @@ export const MODULOS: ModuloDef[] = [
   { id: 'relatorios', grupo: 'ACADÊMICO', label: 'Relatórios', emoji: '📊', permissoes: ['acessar_relatorios', 'acessar_relatorios_ead'], idFiltroFuncionalidade: 'relatorio' },
 
   // FIDELIDADE — granularizado por ação (ver Permissao).
-  { id: 'fidelidade', grupo: 'FIDELIDADE', label: 'Programa', titulo: 'Programa de Fidelidade', emoji: '🏆', permissoes: ['fidelidade_visualizar_extrato', 'fidelidade_creditar_pontos', 'fidelidade_visualizar_resgates', 'fidelidade_gerenciar_resgates', 'fidelidade_gerenciar_recompensas', 'fidelidade_configurar_expiracao'] },
+  { id: 'fidelidade', grupo: 'FIDELIDADE', label: 'Programa', titulo: 'Programa de Fidelidade', emoji: '🏆', permissoes: ['fidelidade_visualizar_dashboard', 'fidelidade_visualizar_extrato', 'fidelidade_creditar_pontos', 'fidelidade_visualizar_resgates', 'fidelidade_gerenciar_resgates', 'fidelidade_visualizar_recompensas', 'fidelidade_gerenciar_recompensas', 'fidelidade_visualizar_historico', 'fidelidade_configurar_expiracao'] },
   { id: 'parceiros', grupo: 'FIDELIDADE', label: 'Parceiros', titulo: 'Parceiros & Vouchers', emoji: '🤝', permissoes: ['fidelidade_visualizar_parceiros', 'fidelidade_gerenciar_parceiros'] },
   { id: 'eventos', grupo: 'FIDELIDADE', label: 'Eventos', titulo: 'Eventos e Check-in', emoji: '📅', permissoes: ['fidelidade_gerenciar_eventos'] },
 ];

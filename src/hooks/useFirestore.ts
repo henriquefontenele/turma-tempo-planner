@@ -179,6 +179,20 @@ export function useFirestoreCollection<T extends { id: string }>(
     }
   };
 
+  /** Cria/sobrescreve documento com ID conhecido (ex.: fidelidade_usuarios/{uid}). */
+  const setItem = async (id: string, item: Omit<T, 'id'>) => {
+    if (!user) return;
+
+    try {
+      const docRef = doc(db, collectionName, id);
+      await setDoc(docRef, item as any);
+    } catch (err: any) {
+      console.error(`Erro ao definir item em ${collectionName}/${id}:`, err);
+      setError(err.message);
+      throw err;
+    }
+  };
+
   const updateItem = async (id: string, updates: Partial<T>) => {
     if (!user) return;
 
@@ -210,7 +224,8 @@ export function useFirestoreCollection<T extends { id: string }>(
 
   return { 
     data: items, 
-    addItem, 
+    addItem,
+    setItem,
     updateItem, 
     deleteItem, 
     setData: updateItems, 

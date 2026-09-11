@@ -30,9 +30,9 @@ const STAR_TOKENS = new Set(['*', 'all', 'tudo', 'todos']);
 // Extraído para um único lugar — antes esta tabela estava duplicada em dois pontos de loadUserProfile.
 const MODULOS_PADRAO_POR_ROLE: Record<UserRole, string[]> = {
   administrador: MODULO_IDS_VISIVEIS_COM_PERMISSAO,
-  diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','fidelidade','eventos'],
-  coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','fidelidade','eventos'],
-  secretario: ['professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','matriculas-ead','fidelidade'],
+  diretor: ['disciplinas','professores','turmas','escolas','alunos','matricula','gerador','horarios','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','fidelidade','parceiros','eventos'],
+  coordenador: ['disciplinas','turmas','gerador','horarios','professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','aulas-ead','matriculas-ead','fidelidade','parceiros','eventos'],
+  secretario: ['professores','matricula','alunos','academico','notas','relatorios','cursos-ead','modulos-ead','matriculas-ead','fidelidade','parceiros','eventos'],
   professor: ['academico','notas','relatorios','matriculas-ead'],
 };
 

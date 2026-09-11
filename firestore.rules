@@ -75,8 +75,10 @@ service cloud.firestore {
     // User profiles – owner, admin, ou perfil com a permissão granular certa.
     // ──────────────────────────────────────────────
     match /users/{userId} {
+      // isStaff() liberado na leitura para cadastro no programa de fidelidade
+      // (e telas admin que listam contas). Escrita continua granular.
       allow read: if isAuthenticated() && (
-        request.auth.uid == userId || isAdmin() || hasPermissao('visualizar_usuarios')
+        request.auth.uid == userId || isAdmin() || isStaff() || hasPermissao('visualizar_usuarios')
       );
       allow create: if isAuthenticated() && (
         request.auth.uid == userId || isAdmin() || hasPermissao('criar_usuarios')
@@ -213,6 +215,14 @@ service cloud.firestore {
       allow write: if isStaff() || hasPermissao('registrar_notas');
     }
 
+    // Conta vinculada a um documento de parceiro (portal /parceiro).
+    function isParceiroVinculado(parceiroId) {
+      return isAuthenticated() &&
+        parceiroId is string &&
+        exists(/databases/$(database)/documents/fidelidade_parceiros/$(parceiroId)) &&
+        get(/databases/$(database)/documents/fidelidade_parceiros/$(parceiroId)).data.userId == request.auth.uid;
+    }
+
     // ──────────────────────────────────────────────
     // Loyalty program — isStaff() (papel legado) OU permissão granular de
     // Fidelidade (ver src/types/index.ts). fidelidade_transacoes/
@@ -226,8 +236,10 @@ service cloud.firestore {
     // fabricável pelo próprio usuário chamando updateDoc direto (bypassando o
     // app). O autoatendimento seguro fica só na criação da transação abaixo
     // (com ID determinístico, valor travado no evento e create-only —
-    // impossível de repetir ou fabricar); a atualização do saldo em si
-    // continua exigindo staff/permissão, ver nota em CheckinEvento.tsx.
+    // impossível de repetir ou fabricar). O portal /meus-pontos e a aprovação
+    // de resgates usam o saldo calculado a partir do extrato; o campo
+    // saldoPontos em fidelidade_usuarios é cache sincronizável via
+    // "Reconciliar saldos" na aba Participantes.
     match /fidelidade_usuarios/{docId} {
       allow read: if isAuthenticated();
       allow write: if isStaff() || hasPermissao('fidelidade_creditar_pontos') || hasPermissao('fidelidade_gerenciar_resgates');
@@ -235,11 +247,8 @@ service cloud.firestore {
 
     match /fidelidade_transacoes/{docId} {
       allow read: if isAuthenticated();
-      // Autoatendimento: só cria uma transação de crédito de check-in pro
-      // próprio uid, com ID determinístico "{eventoId}_{uid}" (evita duplicar
-      // o crédito — create falha se o doc já existir), valor batendo com o
-      // que o evento realmente credita, e só depois de já existir o check-in
-      // correspondente (também com ID determinístico).
+      // Autoatendimento: crédito de check-in OU débito de resgate imediato
+      // (ID determinístico resgate_{pedidoId}, pedido próprio já aprovado).
       allow create: if isStaff() || hasPermissao('fidelidade_creditar_pontos') || hasPermissao('fidelidade_gerenciar_resgates') || (
         isAuthenticated() &&
         request.resource.data.usuarioId == request.auth.uid &&
@@ -249,29 +258,48 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/checkins-eventos/$(docId)) &&
         exists(/databases/$(database)/documents/eventos/$(request.resource.data.referenciaId)) &&
         request.resource.data.quantidade == get(/databases/$(database)/documents/eventos/$(request.resource.data.referenciaId)).data.pontosCreditar
+      ) || (
+        isAuthenticated() &&
+        request.resource.data.usuarioId == request.auth.uid &&
+        request.resource.data.tipo == 'debito' &&
+        request.resource.data.categoria == 'resgate' &&
+        docId == 'resgate_' + request.resource.data.referenciaId &&
+        exists(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.referenciaId)) &&
+        get(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.referenciaId)).data.usuarioId == request.auth.uid &&
+        get(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.referenciaId)).data.status == 'aprovado' &&
+        get(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.referenciaId)).data.pontosUtilizados == request.resource.data.quantidade
       );
       allow update, delete: if isStaff() || hasPermissao('fidelidade_creditar_pontos') || hasPermissao('fidelidade_gerenciar_resgates');
     }
 
     match /fidelidade_recompensas/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_recompensas');
+      allow create: if isStaff() || hasPermissao('fidelidade_gerenciar_recompensas') || (
+        isAuthenticated() &&
+        request.resource.data.parceiroId is string &&
+        isParceiroVinculado(request.resource.data.parceiroId)
+      );
+      allow update, delete: if isStaff() || hasPermissao('fidelidade_gerenciar_recompensas') || (
+        isAuthenticated() &&
+        resource.data.parceiroId is string &&
+        isParceiroVinculado(resource.data.parceiroId) &&
+        (!('parceiroId' in request.resource.data) || request.resource.data.parceiroId == resource.data.parceiroId)
+      );
     }
 
-    // Nome corrigido: FidelidadeTab.tsx grava em "fidelidade_pedidos", não "fidelidade_resgates".
-    // O próprio responsável pode criar um pedido pendente pra si mesmo (portal
-    // "Meus Pontos") — validado contra o custo real da recompensa, pra não dar
-    // pra fabricar um pedido mais barato do que ele é. Nenhum ponto é debitado
-    // aqui: o débito só acontece quando o staff aprova (ver
-    // FidelidadeTab.tsx -> handleProcessarPedido), que é o ponto de confiança
-    // real do fluxo — por isso update/delete continuam staff/permissão-only.
+    // Resgate imediato: usuário cria pedido já aprovado com voucherCodigo e
+    // parceiroId, custo batendo com a recompensa. Update/delete só staff.
     match /fidelidade_pedidos/{docId} {
       allow read: if isAuthenticated();
       allow create: if isStaff() || hasPermissao('fidelidade_gerenciar_resgates') || (
         isAuthenticated() &&
         request.resource.data.usuarioId == request.auth.uid &&
-        request.resource.data.status == 'pendente' &&
-        request.resource.data.pontosUtilizados == get(/databases/$(database)/documents/fidelidade_recompensas/$(request.resource.data.recompensaId)).data.pontosNecessarios
+        request.resource.data.status == 'aprovado' &&
+        request.resource.data.parceiroId is string &&
+        request.resource.data.voucherCodigo is string &&
+        exists(/databases/$(database)/documents/fidelidade_recompensas/$(request.resource.data.recompensaId)) &&
+        request.resource.data.pontosUtilizados == get(/databases/$(database)/documents/fidelidade_recompensas/$(request.resource.data.recompensaId)).data.pontosNecessarios &&
+        request.resource.data.parceiroId == get(/databases/$(database)/documents/fidelidade_recompensas/$(request.resource.data.recompensaId)).data.parceiroId
       );
       allow update, delete: if isStaff() || hasPermissao('fidelidade_gerenciar_resgates');
     }
@@ -343,8 +371,7 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────
-    // Partners & vouchers – nomes corrigidos (ParceirosTab.tsx/FidelidadeTab.tsx
-    // usam "fidelidade_parceiros" e "fidelidade_vouchers", não "parceiros").
+    // Partners & vouchers
     // ──────────────────────────────────────────────
     match /fidelidade_parceiros/{parceiroId} {
       allow read: if isAuthenticated();
@@ -353,7 +380,25 @@ service cloud.firestore {
 
     match /fidelidade_vouchers/{voucherId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff() || hasPermissao('fidelidade_gerenciar_parceiros');
+      allow create: if isStaff() || hasPermissao('fidelidade_gerenciar_parceiros') || hasPermissao('fidelidade_gerenciar_resgates') || (
+        isAuthenticated() &&
+        request.resource.data.usuarioId == request.auth.uid &&
+        request.resource.data.status == 'ativo' &&
+        docId == 'voucher_' + request.resource.data.pedidoResgateId &&
+        exists(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.pedidoResgateId)) &&
+        get(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.pedidoResgateId)).data.usuarioId == request.auth.uid &&
+        get(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.pedidoResgateId)).data.voucherCodigo == request.resource.data.codigo &&
+        get(/databases/$(database)/documents/fidelidade_pedidos/$(request.resource.data.pedidoResgateId)).data.parceiroId == request.resource.data.parceiroId
+      );
+      // Parceiro vinculado marca utilizado; staff/permissões gerenciam o restante.
+      allow update: if isStaff() || hasPermissao('fidelidade_gerenciar_parceiros') || hasPermissao('fidelidade_gerenciar_resgates') || (
+        isAuthenticated() &&
+        isParceiroVinculado(resource.data.parceiroId) &&
+        resource.data.status == 'ativo' &&
+        request.resource.data.status == 'utilizado' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'dataUtilizacao'])
+      );
+      allow delete: if isStaff() || hasPermissao('fidelidade_gerenciar_parceiros');
     }
 
     // ──────────────────────────────────────────────

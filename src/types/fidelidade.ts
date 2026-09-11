@@ -38,11 +38,18 @@ export interface Recompensa {
   pontosNecessarios: number;
   categoria: 'desconto' | 'material' | 'servico' | 'brinde' | 'outro';
   imagemUrl?: string;
+  /** Limite global de usos (0 = ilimitado). */
   quantidadeDisponivel: number;
+  /**
+   * Limite opcional por usuário (0 ou ausente = sem teto por pessoa).
+   * Ex.: 2 = cada usuário só pode resgatar 2 vouchers desta recompensa.
+   */
+  limitePorUsuario?: number;
   ativa: boolean;
   dataCriacao: string;
-  parceiroId?: string; // ID do parceiro comercial (se for oferta de parceiro)
-  parceiroNome?: string;
+  /** Obrigatório — escola também é cadastrada como parceiro. */
+  parceiroId: string;
+  parceiroNome: string;
 }
 
 export interface PedidoResgate {
@@ -57,7 +64,7 @@ export interface PedidoResgate {
   dataPedido: string;
   dataProcessamento?: string;
   processadoPor?: string;
-  voucherCodigo?: string; // código do voucher gerado (se for parceiro)
-  parceiroId?: string;
-  parceiroNome?: string;
+  voucherCodigo?: string;
+  parceiroId: string;
+  parceiroNome: string;
 }

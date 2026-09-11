@@ -9,6 +9,8 @@ export interface Parceiro {
   logoUrl?: string;
   ativo: boolean;
   dataCadastro: string;
+  /** Conta do sistema vinculada ao portal /parceiro (escola ou loja). */
+  userId?: string;
 }
 
 export interface Voucher {

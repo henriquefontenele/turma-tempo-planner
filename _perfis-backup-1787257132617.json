@@ -1,0 +1,149 @@
+{
+  "geradoEm": "2026-08-20T20:18:52.616Z",
+  "perfis": [
+    {
+      "id": "0rXE0ARerKuAxuuYNrRY",
+      "nome": "Diretor",
+      "editavel": true,
+      "herdarDe": "k5q4jZLnCLb4pR92IWT6",
+      "descricao": "Diretor da Escola.",
+      "permissoes": [
+        "gerenciar_usuarios",
+        "gerenciar_matriculas",
+        "gerenciar_eventos",
+        "gerenciar_fidelidade"
+      ]
+    },
+    {
+      "id": "1V20KwXy0UGZZ3240Je1",
+      "nome": "Parceiro",
+      "descricao": "",
+      "herdarDe": null,
+      "editavel": true,
+      "permissoes": [
+        "gerenciar_eventos",
+        "gerenciar_fidelidade"
+      ]
+    },
+    {
+      "id": "2qwExvBB3kQQiaZleDun",
+      "nome": "Administrador",
+      "permissoes": [
+        "criar_documentos",
+        "visualizar_documentos",
+        "configuracoes_sistema",
+        "gerenciar_usuarios",
+        "gerenciar_escolas",
+        "gerenciar_integracao",
+        "acessar_relatorios",
+        "registrar_notas",
+        "registrar_frequencia",
+        "visualizar_frequencia",
+        "visualizar_notas",
+        "visualizar_horarios",
+        "gerar_horarios",
+        "gerenciar_disciplinas",
+        "gerenciar_alunos",
+        "gerenciar_matriculas",
+        "gerenciar_professores",
+        "gerenciar_turmas"
+      ],
+      "herdarDe": null,
+      "editavel": true,
+      "descricao": "Perfil de acesso pleno a todas as funcionalidades."
+    },
+    {
+      "id": "MUBOVRyc44sdZwgTGFOG",
+      "nome": "Secretario Educação",
+      "descricao": "",
+      "permissoes": [
+        "gerenciar_usuarios",
+        "gerenciar_escolas"
+      ],
+      "herdarDe": null,
+      "editavel": true
+    },
+    {
+      "id": "bTYbgZVs91SlI0nRcMQC",
+      "nome": "Professor",
+      "descricao": "",
+      "permissoes": [
+        "registrar_frequencia",
+        "registrar_notas",
+        "visualizar_frequencia",
+        "visualizar_notas",
+        "acessar_relatorios"
+      ],
+      "herdarDe": null,
+      "editavel": true
+    },
+    {
+      "id": "cF4kxHW8jpKOgFmqzzQj",
+      "nome": "Secretário",
+      "permissoes": [
+        "gerenciar_turmas",
+        "gerenciar_matriculas",
+        "visualizar_horarios",
+        "visualizar_frequencia",
+        "visualizar_notas",
+        "acessar_relatorios"
+      ],
+      "herdarDe": null,
+      "editavel": true,
+      "descricao": "Secretário da Escola"
+    },
+    {
+      "id": "k5q4jZLnCLb4pR92IWT6",
+      "nome": "Coordenador",
+      "descricao": "Coordenador Escolar.",
+      "permissoes": [
+        "gerenciar_turmas",
+        "gerenciar_professores",
+        "gerenciar_alunos",
+        "gerenciar_disciplinas",
+        "gerar_horarios",
+        "visualizar_horarios"
+      ],
+      "herdarDe": "bTYbgZVs91SlI0nRcMQC",
+      "editavel": true
+    },
+    {
+      "id": "lpBMQweAtkkP4pCIjkit",
+      "nome": "Aluno",
+      "descricao": "",
+      "permissoes": [
+        "visualizar_frequencia",
+        "visualizar_notas"
+      ],
+      "herdarDe": null,
+      "editavel": true
+    },
+    {
+      "id": "nBBzp8Fsi0N5dL0B7rcv",
+      "nome": "Responsável",
+      "descricao": "",
+      "permissoes": [
+        "visualizar_horarios",
+        "visualizar_frequencia",
+        "visualizar_notas",
+        "acessar_relatorios"
+      ],
+      "herdarDe": null,
+      "editavel": true
+    },
+    {
+      "id": "rAUVe2hLdtbV7tWJ8pr2",
+      "nome": "Supervisor ",
+      "descricao": "Supervisor de Escolas",
+      "permissoes": [
+        "visualizar_horarios",
+        "visualizar_frequencia",
+        "visualizar_notas",
+        "acessar_relatorios",
+        "gerenciar_escolas"
+      ],
+      "herdarDe": null,
+      "editavel": true
+    }
+  ]
+}
